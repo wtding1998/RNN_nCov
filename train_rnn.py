@@ -14,7 +14,7 @@ import torch.optim as optim
 import torch.backends.cudnn as cudnn
 
 
-from get_rnndata import dataset_factory
+from get_dataset import get_rnn_dataset
 from utils import DotDict, Logger, rmse, rmse_tensor, boolean_string, get_dir, get_time, time_dir
 from rnn_model import LSTMNet, GRUNet
 import numpy as np
@@ -26,8 +26,8 @@ import numpy as np
 p = configargparse.ArgParser()
 # -- data
 p.add('--datadir', type=str, help='path to dataset', default='data')
-p.add('--dataset', type=str, help='dataset name', default='aids')
-p.add('--nt_train', type=int, help='time for training', default=100)
+p.add('--dataset', type=str, help='dataset name', default='ncov')
+p.add('--nt_train', type=int, help='time for training', default=11)
 # -- xp
 p.add('--outputdir', type=str, help='path to save xp', default='output')
 p.add('--xp', type=str, help='xp name', default='stnn')
@@ -78,7 +78,7 @@ if opt.device > -1:
 # Data
 #######################################################################################################################
 # -- load data
-setup, (train_input, train_output), (test_input, test_data) = dataset_factory(opt.datadir, opt.dataset, opt.nt_train,opt.seq_length)
+setup, (train_input, train_output), (test_input, test_data) = get_rnn_dataset(opt.datadir, opt.dataset, opt.nt_train,opt.seq_length)
 train_input = train_input.to(device)
 train_output = train_output.to(device)
 test_input = test_input.to(device)
@@ -104,9 +104,9 @@ opt.start_time = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
 # Model
 #######################################################################################################################
 if opt.rnn_model == 'LSTM':
-    model = LSTMNet(opt.nx, opt.nhid, opt.nlayers, opt.nx, opt.seq_length).to(device)
+    model = LSTMNet(opt.nx * opt.nd, opt.nhid, opt.nlayers, opt.nx * opt.nd, opt.seq_length).to(device)
 if opt.rnn_model == 'GRU':
-    model = GRUNet(opt.nx, opt.nhid, opt.nlayers, opt.nx, opt.seq_length).to(device)
+    model = GRUNet(opt.nx * opt.nd, opt.nhid, opt.nlayers, opt.nx * opt.nd, opt.seq_length).to(device)
 
 
 #######################################################################################################################
@@ -149,32 +149,32 @@ for e in pb:
     else:
         pb.set_postfix(train_loss=train_loss.item())
 # ------------------------ Test ------------------------
-model.eval()
-with torch.no_grad():
-    pred = model.generate(test_input, opt.nt - opt.nt_train)
-    pred = pred.view(opt.nt - opt.nt_train, opt.nx, 1)
-    test_data = test_data.view(opt.nt - opt.nt_train, opt.nx, 1)
-    score = rmse(pred, test_data)
-    score_ts = rmse(pred, test_data, reduce=False) # 1-dim tensor
-    print("test_loss : %f" %score)
-    pred = pred.view(opt.nt - opt.nt_train, opt.nx)
-    pred = pred.cpu().numpy()
-    np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred.txt'), pred)
-    logger.log('test_epoch.rmse', score)
-    logger.log('test_epoch.ts', {t: {'rmse': scr.item()} for t, scr in enumerate(score_ts)}) # t : time, 0-55 scr : score
-    # schedule lr
-    # if opt.patience > 0 and score < 1:
-    #     lr_scheduler.step(score)
-    # lr = optimizer.param_groups[0]['lr']
-    # if lr <= 1e-5:
-    #     break
-opt.test_loss = score
-opt.train_loss = train_loss.item()
-opt.end = time_dir()
-end_st = datetime.datetime.now()
-opt.end_time = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
-opt.time = str(end_st - start_st)
+# model.eval()
+# with torch.no_grad():
+#     pred = model.generate(test_input, opt.nt - opt.nt_train)
+#     pred = pred.view(opt.nt - opt.nt_train, opt.nx, opt.nd)
+#     test_data = test_data.view(opt.nt - opt.nt_train, opt.nx, opt.nd)
+#     score = rmse(pred, test_data)
+#     score_ts = rmse(pred, test_data, reduce=False) # 1-dim tensor
+#     print("test_loss : %f" %score)
+#     pred = pred.view(opt.nt - opt.nt_train, opt.nx)
+#     pred = pred.cpu().numpy()
+#     np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred.txt'), pred)
+#     logger.log('test_epoch.rmse', score)
+#     logger.log('test_epoch.ts', {t: {'rmse': scr.item()} for t, scr in enumerate(score_ts)}) # t : time, 0-55 scr : score
+#     # schedule lr
+#     # if opt.patience > 0 and score < 1:
+#     #     lr_scheduler.step(score)
+#     # lr = optimizer.param_groups[0]['lr']
+#     # if lr <= 1e-5:
+#     #     break
+# opt.test_loss = score
+# opt.train_loss = train_loss.item()
+# opt.end = time_dir()
+# end_st = datetime.datetime.now()
+# opt.end_time = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
+# opt.time = str(end_st - start_st)
 
-with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
-    json.dump(opt, f, sort_keys=True, indent=4)
-logger.save(model)
+# with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
+#     json.dump(opt, f, sort_keys=True, indent=4)
+# logger.save(model)
