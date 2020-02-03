@@ -15,7 +15,7 @@ import torch.backends.cudnn as cudnn
 
 
 from get_dataset import get_rnn_dataset
-from utils import DotDict, Logger, rmse, rmse_tensor, boolean_string, get_dir, get_time, time_dir
+from utils import DotDict, Logger, rmse, rmse_tensor, boolean_string, get_dir, get_time, time_dir, shuffle_list
 from rnn_model import LSTMNet, GRUNet
 import numpy as np
 
@@ -38,17 +38,21 @@ p.add('--auto', type=boolean_string, help='dataset_model + time', default=False)
 # -- model
 p.add('--seq_length', type=int, help='sequence length', default=5)
 p.add('--nhid', type=int, help='dynamic function hidden size', default=50)
-p.add('--nlayers', type=int, help='dynamic function num layers', default=3)
-p.add('--rnn_model', type=str, help='choose rnn model : LSTM | GRU', default='LSTM')
+p.add('--nlayers', type=int, help='dynamic function num layers', default=2)
+p.add('--rnn_model', type=str, help='choose rnn model : LSTM | GRU', default='GRU')
 # -- optim
 p.add('--lr', type=float, help='learning rate', default=3e-3)
+p.add('--sch_bound', type=float, help='bound for schedule', default=270)
+p.add('--sch_factor', type=float, help='scheduler factor', default=0.5)
+p.add('--clip_value', type=float, help='clip_value for learning', default=1e-1)
 p.add('--beta1', type=float, default=.9, help='adam beta1')
 p.add('--beta2', type=float, default=.999, help='adam beta2')
 p.add('--eps', type=float, default=1e-9, help='adam eps')
 p.add('--wd', type=float, help='weight decay', default=1e-6)
+
 # -- learning
 p.add('--batch_size', type=int, default=10, help='batch size')
-p.add('--patience', type=int, default=150, help='number of epoch to wait before trigerring lr decay')
+p.add('--patience', type=int, default=400, help='number of epoch to wait before trigerring lr decay')
 p.add('--nepoch', type=int, default=100, help='number of epochs to train for')
 p.add('--test', type=boolean_string, default=False, help='test during training')
 # -- gpu
@@ -114,7 +118,7 @@ if opt.rnn_model == 'GRU':
 #######################################################################################################################
 optimizer = optim.Adam(model.parameters(), lr=opt.lr, betas=(opt.beta1, opt.beta2), eps=opt.eps, weight_decay=opt.wd)
 if opt.patience > 0:
-    lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=opt.patience)
+    lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor = opt.sch_factor, patience=opt.patience)
 #######################################################################################################################
 # Logs
 #######################################################################################################################
@@ -128,13 +132,22 @@ lr = opt.lr
 pb = trange(opt.nepoch)
 for e in pb:
     # ------------------------ Train ------------------------
-    model.train()
-    optimizer.zero_grad()
-    prediction = model(train_input)
-    train_loss = rmse_tensor(train_output, prediction)
-    train_loss.backward()
-    optimizer.step()
-    logger.log('train_loss', train_loss.item())
+    batches = shuffle_list(opt.nt_train - opt.seq_length, opt.batch_size)
+    for batch in batches:
+        model.train()
+        optimizer.zero_grad()
+        prediction = model(train_input[batch])
+        train_loss = rmse_tensor(train_output[batch], prediction)
+        train_loss.backward()
+    ## 按范数裁剪
+    ### 这里norm_type可以选择L1范数，L2范数和无穷范数，分别对应`1, 2, 'inf'`
+    # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm, norm_type=2)
+
+    ## 按值裁剪
+    ### 指定clip_value之后，裁剪的范围就是[-clip_value, clip_value]
+    # torch.nn.utils.clip_grad_value_(model.parameters(), opt.clip_value)
+        optimizer.step()
+        logger.log('train_loss', train_loss.item())
     # checkpoint
     # logger.log('train_epoch.lr', lr)
     logger.checkpoint(model)
@@ -146,35 +159,30 @@ for e in pb:
             score = rmse(pred, test_data)
             logger.log('test_epoch.rmse', score)
             pb.set_postfix(train_loss=train_loss.item(), test_loss=score)
+            # schedule lr
+            if opt.patience > 0 and score < opt.sch_bound:
+                lr_scheduler.step(score)
+            lr = optimizer.param_groups[0]['lr']
+            if lr <= 1e-6:
+                break
     else:
         pb.set_postfix(train_loss=train_loss.item())
 # ------------------------ Test ------------------------
-# model.eval()
-# with torch.no_grad():
-#     pred = model.generate(test_input, opt.nt - opt.nt_train)
-#     pred = pred.view(opt.nt - opt.nt_train, opt.nx, opt.nd)
-#     test_data = test_data.view(opt.nt - opt.nt_train, opt.nx, opt.nd)
-#     score = rmse(pred, test_data)
-#     score_ts = rmse(pred, test_data, reduce=False) # 1-dim tensor
-#     print("test_loss : %f" %score)
-#     pred = pred.view(opt.nt - opt.nt_train, opt.nx)
-#     pred = pred.cpu().numpy()
-#     np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred.txt'), pred)
-#     logger.log('test_epoch.rmse', score)
-#     logger.log('test_epoch.ts', {t: {'rmse': scr.item()} for t, scr in enumerate(score_ts)}) # t : time, 0-55 scr : score
-#     # schedule lr
-#     # if opt.patience > 0 and score < 1:
-#     #     lr_scheduler.step(score)
-#     # lr = optimizer.param_groups[0]['lr']
-#     # if lr <= 1e-5:
-#     #     break
-# opt.test_loss = score
-# opt.train_loss = train_loss.item()
-# opt.end = time_dir()
-# end_st = datetime.datetime.now()
-# opt.end_time = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
-# opt.time = str(end_st - start_st)
+model.eval()
+with torch.no_grad():
+    pred = model.generate(test_input, opt.nt - opt.nt_train)
+    pred = pred.view(opt.nt - opt.nt_train, opt.nx, opt.nd)
+    test_data = test_data.view(opt.nt - opt.nt_train, opt.nx, opt.nd)
+    score = rmse(pred, test_data)
+    score_ts = rmse(pred, test_data, reduce=False) # 1-dim tensor
+    print("test_loss : %f" %score)
+opt.test_loss = score
+opt.train_loss = train_loss.item()
+opt.end = time_dir()
+end_st = datetime.datetime.now()
+opt.end_time = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
+opt.time = str(end_st - start_st)
 
-# with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
-#     json.dump(opt, f, sort_keys=True, indent=4)
-# logger.save(model)
+with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
+    json.dump(opt, f, sort_keys=True, indent=4)
+logger.save(model)

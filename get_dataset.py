@@ -15,7 +15,11 @@ def get_time_data(data_dir, disease_name):
     for time_data in time_datas:
         data_path = os.path.join(time_data_dir, time_data)
         new_data = np.genfromtxt(data_path, encoding='utf-8', delimiter=',')
-        data.append(torch.tensor(new_data))
+        new_data = torch.tensor(new_data)
+        if len(new_data.size()) == 1:
+            new_data = new_data.unsqueeze(1)
+        data.append(new_data)
+
     return torch.stack(data, dim=2).float()
 
 

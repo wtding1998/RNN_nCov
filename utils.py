@@ -1,4 +1,5 @@
 import os
+import random
 import json
 import datetime
 from collections import defaultdict
@@ -108,3 +109,11 @@ def model_dir(outputdir):
 def get_model(folder_name):
     li = folder_name.split('_')
     return li[0], li[1]
+
+def shuffle_list(n, batch_size):
+    shuffled_list = list(range(n))
+    random.shuffle(shuffled_list)
+    return [shuffled_list[i:i + batch_size] for i in range(0, len(shuffled_list), batch_size)]
+    
+if __name__ == "__main__":
+    print(shuffle_list(20,3))

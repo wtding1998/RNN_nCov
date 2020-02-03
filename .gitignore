@@ -7,3 +7,6 @@ debug.log
 test.ipynb
 __pycache__/
 .ipynb_checkpoints/
+data/test
+data/bike
+blog.py
