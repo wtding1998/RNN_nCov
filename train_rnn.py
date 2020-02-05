@@ -36,14 +36,14 @@ p.add('--xp_auto', type=boolean_string, help='time', default=False)
 p.add('--xp_time', type=boolean_string, help='xp_time', default=True)
 p.add('--auto', type=boolean_string, help='dataset_model + time', default=False)
 # -- model
-p.add('--seq_length', type=int, help='sequence length', default=5)
+p.add('--seq_length', type=int, help='sequence length', default=3)
 p.add('--nhid', type=int, help='dynamic function hidden size', default=50)
 p.add('--nlayers', type=int, help='dynamic function num layers', default=2)
 p.add('--rnn_model', type=str, help='choose rnn model : LSTM | GRU', default='GRU')
 # -- optim
-p.add('--lr', type=float, help='learning rate', default=3e-3)
-p.add('--sch_bound', type=float, help='bound for schedule', default=270)
-p.add('--sch_factor', type=float, help='scheduler factor', default=0.5)
+p.add('--lr', type=float, help='learning rate', default=1e-2)
+p.add('--sch_bound', type=float, help='bound for schedule', default=6.1e3)
+p.add('--sch_factor', type=float, help='scheduler factor', default=0.9)
 p.add('--clip_value', type=float, help='clip_value for learning', default=1e-1)
 p.add('--beta1', type=float, default=.9, help='adam beta1')
 p.add('--beta2', type=float, default=.999, help='adam beta2')
@@ -117,14 +117,15 @@ if opt.rnn_model == 'GRU':
 # Optimizer
 #######################################################################################################################
 optimizer = optim.Adam(model.parameters(), lr=opt.lr, betas=(opt.beta1, opt.beta2), eps=opt.eps, weight_decay=opt.wd)
+# optimizer = optim.SGD(model.parameters(), lr=opt.lr)
 if opt.patience > 0:
     lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor = opt.sch_factor, patience=opt.patience)
 #######################################################################################################################
 # Logs
 #######################################################################################################################
-logger = Logger(get_dir(opt.outputdir), opt.xp, opt.checkpoint_interval)
-with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
-    json.dump(opt, f, sort_keys=True, indent=4)
+# logger = Logger(get_dir(opt.outputdir), opt.xp, opt.checkpoint_interval)
+# with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
+#     json.dump(opt, f, sort_keys=True, indent=4)
 #######################################################################################################################
 # Training
 #######################################################################################################################
@@ -145,19 +146,21 @@ for e in pb:
 
     ## 按值裁剪
     ### 指定clip_value之后，裁剪的范围就是[-clip_value, clip_value]
-    # torch.nn.utils.clip_grad_value_(model.parameters(), opt.clip_value)
+        # torch.nn.utils.clip_grad_value_(model.parameters(), opt.clip_value)
+        # for name, param in model.named_parameters():
+        #     print(name, param)
         optimizer.step()
-        logger.log('train_loss', train_loss.item())
+        # logger.log('train_loss', train_loss.item())
     # checkpoint
     # logger.log('train_epoch.lr', lr)
-    logger.checkpoint(model)
+    # logger.checkpoint(model)
     if opt.test:
         # ------------------------ Test ------------------------
         model.eval()
         with torch.no_grad():
             pred = model.generate(test_input, opt.nt - opt.nt_train)
             score = rmse(pred, test_data)
-            logger.log('test_epoch.rmse', score)
+            # logger.log('test_epoch.rmse', score)
             pb.set_postfix(train_loss=train_loss.item(), test_loss=score)
             # schedule lr
             if opt.patience > 0 and score < opt.sch_bound:
@@ -175,6 +178,7 @@ with torch.no_grad():
     test_data = test_data.view(opt.nt - opt.nt_train, opt.nx, opt.nd)
     score = rmse(pred, test_data)
     score_ts = rmse(pred, test_data, reduce=False) # 1-dim tensor
+    print(pred + opt.mean)
     print("test_loss : %f" %score)
 opt.test_loss = score
 opt.train_loss = train_loss.item()
@@ -183,6 +187,6 @@ end_st = datetime.datetime.now()
 opt.end_time = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
 opt.time = str(end_st - start_st)
 
-with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
-    json.dump(opt, f, sort_keys=True, indent=4)
-logger.save(model)
+# with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
+#     json.dump(opt, f, sort_keys=True, indent=4)
+# logger.save(model)

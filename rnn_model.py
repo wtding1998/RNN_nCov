@@ -6,13 +6,25 @@ from torch import nn
 class LSTMNet(nn.Module):
     def __init__(self, input_size, hid_size, hid_layers, output_size, seq_length):
         super(LSTMNet, self).__init__()
-        self.rnn = nn.LSTM(input_size, hid_size, hid_layers, batch_first = True)
+        self.rnn = nn.LSTM(input_size, hid_size, hid_layers, dropout=0.5, batch_first = True)
         self.linear = nn.Linear(hid_size, output_size)
         self.out = nn.Linear(seq_length, 1)
         self.input_size = input_size
         self.hid_size = hid_size
         self.hid_layers = hid_layers
         self.seq_length = seq_length
+        self.init_weight()
+
+    def init_weight(self):
+        nn.init.xavier_uniform_(self.linear.weight)
+        self.linear.bias.data.fill_(0)
+        nn.init.xavier_uniform_(self.out.weight)
+        self.out.bias.data.fill_(0)
+        nn.init.xavier_normal_(self.rnn.all_weights[0][0])
+        nn.init.xavier_normal_(self.rnn.all_weights[0][1])
+        nn.init.xavier_normal_(self.rnn.all_weights[1][0])
+        nn.init.xavier_normal_(self.rnn.all_weights[1][1])
+
 
     def forward(self, input):
         nd = input.size(-1)
@@ -57,13 +69,25 @@ class LSTMNet(nn.Module):
 class GRUNet(nn.Module):
     def __init__(self, input_size, hid_size, hid_layers, output_size, seq_length):
         super(GRUNet, self).__init__()
-        self.rnn = nn.LSTM(input_size, hid_size, hid_layers, batch_first = True)
+        self.rnn = nn.GRU(input_size, hid_size, hid_layers, dropout=0.5, batch_first = True)
         self.linear = nn.Linear(hid_size, output_size)
         self.out = nn.Linear(seq_length, 1)
         self.input_size = input_size
         self.hid_size = hid_size
         self.hid_layers = hid_layers
         self.seq_length = seq_length
+        self.init_weight()
+
+    def init_weight(self):
+        nn.init.xavier_uniform_(self.linear.weight)
+        self.linear.bias.data.fill_(0)
+        nn.init.xavier_uniform_(self.out.weight)
+        self.out.bias.data.fill_(0)
+        nn.init.xavier_normal_(self.rnn.all_weights[0][0])
+        nn.init.xavier_normal_(self.rnn.all_weights[0][1])
+        nn.init.xavier_normal_(self.rnn.all_weights[1][0])
+        nn.init.xavier_normal_(self.rnn.all_weights[1][1])
+
 
     def forward(self, input):
         nd = input.size(-1)

@@ -11,3 +11,5 @@ data/test
 data/bike
 data/smallbike
 blog.py
+keras_model.h5
+pred.txt

@@ -25,10 +25,12 @@ def get_time_data(data_dir, disease_name):
 
 def get_rnn_dataset(data_dir, disease, nt_train, seq_len):
     # get dataset
-    data = get_time_data(data_dir, disease) #(nt, nx, nd)
+    data = get_time_data(data_dir, disease)  #(nt, nx, nd)
     # get option
     opt = DotDict()
     opt.nt, opt.nx, opt.nd = data.size()
+    opt.mean = data.mean().item()
+    data = data - opt.mean
     # split train / test
     train_input = []
     train_output = []

@@ -1,28 +1,28 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import time
-import csv
 from utils import DotDict
 from get_dataset import get_time_data
 from keras.layers.core import Dense, Activation, Dropout
 from keras.layers.recurrent import LSTM, GRU
 from keras.models import Sequential, load_model
+from keras.optimizers import SGD, RMSprop, adam
 
 np.random.seed(2017)
 
-def split_data(dataset='bike',sequence_length=20,ratio=1.0):
+def split_data(dataset='ncov',sequence_length=2,ratio=1.0):
 
-    bikes = np.array(get_time_data('data', dataset))  # (45949,1)
+    raw_data = np.array(get_time_data('data', dataset)) 
     opt = DotDict()
-    opt.nt = bikes.shape[0]
-    opt.nx = bikes.shape[1] 
-    opt.nd = bikes.shape[2]
-    bikes = np.reshape(bikes, (opt.nt, opt.nx * opt.nd))
+    opt.nt = raw_data.shape[0]
+    opt.nx = raw_data.shape[1] 
+    opt.nd = raw_data.shape[2]
+    raw_data = np.reshape(raw_data, (opt.nt, opt.nx * opt.nd))
     print ("Data loaded from csv. Formatting...")
     result = []
-    for index in range(len(bikes) - sequence_length + 1):
-        result.append(bikes[index: index + sequence_length])
-    result = np.array(result)  # shape (45929, 20, 1)
+    for index in range(len(raw_data) - sequence_length + 1):
+        result.append(raw_data[index: index + sequence_length])
+    result = np.array(result) 
     result_mean = result.mean()
     result -= result_mean
     print("Shift: ", result_mean)
@@ -61,17 +61,18 @@ def build_model(opt):
     model.add(Activation("linear"))
 
     start = time.time()
-    model.compile(loss="mse", optimizer="rmsprop", metrics=['mae', 'mape'])
+    # optim = RMSprop(lr=0.001)
+    model.compile(loss="mse", optimizer='rmsprop', metrics=['mae', 'mape'])
     print ("Compilation Time : ", time.time() - start)
     return model
 
 
-def run_network(model=None, data=None):
+def run_network(model=None, data=None, dataset='ncov_confirmed'):
     global_start_time = time.time()
-    epochs = 1
+    epochs = 100000
     ratio = 1
     sequence_length = 2
-    dataset = 'ncov'
+    # dataset = 'ncov_confirmed'
 
     if data is None:
         print ('Loading data... ')
@@ -82,16 +83,16 @@ def run_network(model=None, data=None):
 
     print ('\nData Loaded. Compiling...\n')
 
-    model = None
+    # model = None
     if model is None:
         model = build_model(opt)
     try:
         model.fit(
             X_train, y_train,
-            batch_size=512, epochs=epochs, validation_split=0.05)
+            batch_size=8, epochs=epochs, validation_split=0.05)
         # ! save model
         model.save('keras_model.h5')
-        predicted = model.predict(X_test)  # (2296, 1)
+        predicted = model.predict(X_test)  
         predicted = np.reshape(predicted, (predicted.size,))
     except KeyboardInterrupt:
         print ('Training duration (s) : ', time.time() - global_start_time)
@@ -99,7 +100,7 @@ def run_network(model=None, data=None):
 
     try:
         # Evaluate
-        scores = model.evaluate(X_test, y_test, batch_size=512)
+        scores = model.evaluate(X_test, y_test, batch_size=8)
         print("\nevaluate result: \nmse={:.6f}\nmae={:.6f}\nmape={:.6f}".format(scores[0], scores[1], scores[2]))
 
         # draw the figure
@@ -110,7 +111,13 @@ def run_network(model=None, data=None):
         predicted = np.reshape(predicted, (nt_test, opt.nx, opt.nd))
         print ('Training duration (s) : ', time.time() - global_start_time)
         show_plt(y_test, predicted)
-
+        predicted = np.reshape(predicted, (opt.nx, opt.nd))
+        np.savetxt('pred.txt', predicted, delimiter=',')
+        # "confirm, cure, dead"
+        confirmed_pred = predicted[:, 0]
+        cure_pred = predicted[:, 1]
+        dead_pred = predicted[:, 2]
+        print("pred : \nconfirmed={:.1f}\ncured={:.1f}\ndead={:.1f}".format(confirmed_pred.sum(), cure_pred.sum(), dead_pred.sum()))
     except Exception as e:
         print ('Training duration (s) : ', time.time() - global_start_time)
         print (str(e))
@@ -128,13 +135,10 @@ def show_plt(y_test, predict):
         ax = fig.add_subplot(111)
         ax.scatter(list(range(nx)), y_test[0,:,i],label="Real")
         ax.legend(loc='upper left')
-        print(1)
-
         plt.scatter(list(range(nx)), predict[0,:,i],label="Prediction")
         plt.legend(loc='upper left')
         plt.show()
 
 
 if __name__ == '__main__':
-    # data_bike_num()
-    run_network()
+    run_network(dataset='ncov_confirmed')
