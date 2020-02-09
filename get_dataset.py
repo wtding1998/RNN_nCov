@@ -42,7 +42,7 @@ def get_relations(data_dir, disease_name, k):
                 new_rels.append(torch.stack([new_rels[-1][:, r].matmul(new_rels[0][:, r]) for r in range(relation.size(1))], 1))
             relation = torch.cat(new_rels, 1)
             relation_kind.append(relation)
-        relation_kind = torch.stack(relation_kind, dim=2)
+        relation_kind = torch.stack(relation_kind, dim=3)
         relations.append(relation_kind)
     relations = torch.cat(relations, dim=1)
     return relations.float()
@@ -80,6 +80,8 @@ def get_stnn_data(data_dir, disease_name, nt_train, k=1):
     opt.nt, opt.nx, opt.nd = data.size()
     opt.periode = opt.nt
     relations = get_relations(data_dir, disease_name, k)
+    # ! have to set nt_train = opt.nt - 1
+    nt_train = opt.nt - 1
     # make k hop
     # split train / test
     train_data = data[:nt_train]
@@ -88,7 +90,7 @@ def get_stnn_data(data_dir, disease_name, nt_train, k=1):
 
 
 if __name__ == "__main__":
-    print(get_relations('data', 'ncov', 1))
+    print(get_relations('data', 'ncov', 1).size())
     # result
     # torch.Size([7, 3, 34, 3])
     # torch.Size([7, 34, 3])

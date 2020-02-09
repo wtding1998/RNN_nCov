@@ -7,41 +7,42 @@ from module import MLP
 from utils import identity
 
 
-class SaptioTemporalNN(nn.Module):
-    def __init__(self, relations, nx, nt, nd, nz, mode=None, nhid=0, nlayers=1, dropout_f=0., dropout_d=0.,
+class SaptioTemporalNN_multitime(nn.Module):
+    def __init__(self, relations, nx, nt_train, nd, nz, mode=None, nhid=0, nlayers=1, dropout_f=0., dropout_d=0.,
                  activation='tanh', periode=1):
-        super(SaptioTemporalNN, self).__init__()
+        super(SaptioTemporalNN_multitime, self).__init__()
         assert (nhid > 0 and nlayers > 1) or (nhid == 0 and nlayers == 1)
         # attributes
-        self.nt = nt
+        self.nt_train = nt_train
         self.nx = nx
         self.nz = nz
+        self.nd = nd
         self.mode = mode
         # kernel
         self.activation = torch.tanh if activation == 'tanh' else identity if activation == 'identity' else None
         device = relations.device
+        eye = torch.stack([torch.eye(nx).to(device).unsqueeze(1) for i in range(nt_train + 1)], dim=3)
         if mode is None or mode == 'refine':
-            self.relations = torch.cat((torch.eye(nx).to(device).unsqueeze(1), relations), 1)
+            self.relations = torch.cat((eye, relations), 1)
         elif mode == 'discover':
-            self.relations = torch.cat((torch.eye(nx).to(device).unsqueeze(1),
-                                        torch.ones(nx, 1, nx).to(device)), 1)
+            self.relations = torch.cat((eye, torch.ones(nx, 1, nx).to(device)), 1)
         self.nr = self.relations.size(1)
         # modules
         self.drop = nn.Dropout(dropout_f)
-        self.factors = nn.Parameter(torch.Tensor(nt, nx, nz))
+        self.factors = nn.Parameter(torch.Tensor(nt_train, nx, nz))
         self.dynamic = MLP(nz * self.nr, nhid, nz, nlayers, dropout_d)
         self.decoder = nn.Linear(nz, nd, bias=False)
         if mode == 'refine':
             self.relations.data = self.relations.data.ceil().clamp(0, 1).byte()
-            self.rel_weights = nn.Parameter(torch.Tensor(self.relations.sum().item() - self.nx))
+            self.rel_weights = nn.Parameter(torch.Tensor(self.relations.sum().item() - self.nx * self.nt_train))
         elif mode == 'discover':
-            self.rel_weights = nn.Parameter(torch.Tensor(nx, 1, nx))
+            self.rel_weights = nn.Parameter(torch.Tensor(nx, 1, nx, nt_train))
         # init
         self._init_weights(periode)
 
     def _init_weights(self, periode):
         initrange = 0.1
-        if periode >= self.nt:
+        if periode >= self.nt_train:
             self.factors.data.uniform_(-initrange, initrange)
         else:
             timesteps = torch.arange(self.factors.size(0)).long()
@@ -55,22 +56,22 @@ class SaptioTemporalNN(nn.Module):
         elif self.mode == 'discover':
             self.rel_weights.data.fill_(1 / self.nx)
 
-    def get_relations(self):
+    def get_relations(self, t):
         if self.mode is None:
-            return self.relations
+            return self.relations[:, :, :, t]
         else:
-            weights = F.hardtanh(self.rel_weights, 0, 1)
+            weights = F.hardtanh(self.rel_weights[:, :, :, t], 0, 1)
             if self.mode == 'refine':
-                intra = self.rel_weights.new(self.nx, self.nx).copy_(self.relations[:, 0]).unsqueeze(1)
-                inter = self.rel_weights.new_zeros(self.nx, self.nr - 1, self.nx)
-                inter.masked_scatter_(self.relations[:, 1:], weights)
+                intra = self.rel_weights[:, :, :, t].new(self.nx, self.nx).copy_(self.relations[:, 0, :, t]).unsqueeze(1)
+                inter = self.rel_weights[:, :, :, t].new_zeros(self.nx, self.nr - 1, self.nx)
+                inter.masked_scatter_(self.relations[:, 1:, :, t], weights)
             if self.mode == 'discover':
-                intra = self.relations[:, 0].unsqueeze(1)
+                intra = self.relations[:, 0, :, t].unsqueeze(1)
                 inter = weights
             return torch.cat((intra, inter), 1)
 
-    def update_z(self, z):
-        z_context = self.get_relations().matmul(z).view(-1, self.nr * self.nz)
+    def update_z(self, z, t):
+        z_context = self.get_relations(t).matmul(z).view(-1, self.nr * self.nz)
         z_next = self.dynamic(z_context)
         return self.activation(z_next)
 
@@ -84,17 +85,20 @@ class SaptioTemporalNN(nn.Module):
         return x_rec
 
     def dyn_closure(self, t_idx, x_idx):
-        rels = self.get_relations()
-        z_input = self.drop(self.factors[t_idx])
-        z_context = rels[x_idx].matmul(z_input).view(-1, self.nr * self.nz)
-        z_gen = self.dynamic(z_context)
+        z_gen = []
+        for t in t_idx:
+            rels = self.get_relations(t)
+            z_input = self.drop(self.factors[t])
+            z_context = rels[x_idx].matmul(z_input).view(-1, self.nr * self.nz)
+            z_gen.append(self.dynamic(z_context))
+        z_gen = torch.stack(z_gen, dim=0)
         return self.activation(z_gen)
 
-    def generate(self, nsteps):
+    def generate(self, nsteps, start_time):
         z = self.factors[-1]
         z_gen = []
         for t in range(nsteps):
-            z = self.update_z(z)
+            z = self.update_z(z, start_time + t)
             z_gen.append(z)
         z_gen = torch.stack(z_gen)
         x_gen = self.decode_z(z_gen)

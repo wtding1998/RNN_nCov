@@ -9,7 +9,10 @@ import torch
 def rmse(x_pred, x_target, reduce=True):
     if reduce:
         return x_pred.sub(x_target).pow(2).sum(-1).sqrt().mean().item()
-    return x_pred.sub(x_target).pow(2).sum(2).sqrt().mean(1).squeeze()
+    mse = x_pred.sub(x_target).pow(2).sum(2).sqrt().mean(1).squeeze()
+    if len(mse.size()) == 0:
+        mse =  mse.unsqueeze(0)
+    return mse
 
 def rmse_tensor(x_pred, x_target):
     return x_pred.sub(x_target).pow(2).sum(-1).sqrt().mean()
@@ -116,4 +119,6 @@ def shuffle_list(n, batch_size):
     return [shuffled_list[i:i + batch_size] for i in range(0, len(shuffled_list), batch_size)]
     
 if __name__ == "__main__":
-    print(shuffle_list(20,3))
+    a = torch.ones(2, 3, 3).float()
+    b = torch.zeros(2, 3, 3).float()
+    print(rmse(a, b, reduce=False))
