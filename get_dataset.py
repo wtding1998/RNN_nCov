@@ -24,7 +24,7 @@ def get_time_data(data_dir, disease_name):
 
 def get_relations(data_dir, disease_name, k):
     '''
-    (nt, nx, nrelations, nx)
+    (nx, nrelations, nx, nt)
     '''
     relations_dir = os.path.join(data_dir, disease_name, 'relations')
     relations_names = os.listdir(relations_dir)
@@ -42,9 +42,9 @@ def get_relations(data_dir, disease_name, k):
                 new_rels.append(torch.stack([new_rels[-1][:, r].matmul(new_rels[0][:, r]) for r in range(relation.size(1))], 1))
             relation = torch.cat(new_rels, 1)
             relation_kind.append(relation)
-        relation_kind = torch.stack(relation_kind, dim=0)
+        relation_kind = torch.stack(relation_kind, dim=2)
         relations.append(relation_kind)
-    relations = torch.cat(relations, dim=2)
+    relations = torch.cat(relations, dim=1)
     return relations.float()
 
 def get_rnn_dataset(data_dir, disease, nt_train, seq_len):
@@ -88,7 +88,7 @@ def get_stnn_data(data_dir, disease_name, nt_train, k=1):
 
 
 if __name__ == "__main__":
-    print(get_relations('data', 'ncov', 3).size())
+    print(get_relations('data', 'ncov', 1))
     # result
     # torch.Size([7, 3, 34, 3])
     # torch.Size([7, 34, 3])

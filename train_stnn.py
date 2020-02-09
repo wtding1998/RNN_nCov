@@ -104,7 +104,7 @@ if opt.device > -1:
 #######################################################################################################################
 # -- load data
 setup, (train_data, test_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train,opt.khop)
-relations = relations[0]
+relations = relations[:, :, 0]
 train_data = train_data.to(device)
 test_data = test_data.to(device)
 relations = relations.to(device)
