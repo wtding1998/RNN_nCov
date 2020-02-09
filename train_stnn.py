@@ -104,6 +104,7 @@ if opt.device > -1:
 #######################################################################################################################
 # -- load data
 setup, (train_data, test_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train,opt.khop)
+relations = relations[0]
 train_data = train_data.to(device)
 test_data = test_data.to(device)
 relations = relations.to(device)
@@ -244,9 +245,10 @@ with torch.no_grad():
 logger.log('test.rmse', score)
 logger.log('test.ts', {t: {'rmse': scr.item()} for t, scr in enumerate(score_ts)})
 
-x_pred = x_pred.view(opt.nt - opt.nt_train, opt.nx)
-x_pred = x_pred.cpu().numpy()
-np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred.txt'), x_pred)
+
+for d in range(opt.nd):
+    d_pred = x_pred[:,:, i].cpu().numpy()
+    np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred_' + str(i).zfill(3) +  '.txt'), d_pred)
 
 opt.test_loss = score
 # logs_train['loss'] = logs_train['mse_dec'] + logs_train['loss_dyn']
