@@ -15,7 +15,7 @@ import torch.optim as optim
 import torch.backends.cudnn as cudnn
 
 
-from datasets import dataset_factory
+from get_dataset import get_stnn_data
 from utils import DotDict, Logger, rmse, boolean_string, get_dir, get_time, time_dir
 from stnn import SaptioTemporalNN
 
@@ -26,8 +26,8 @@ from stnn import SaptioTemporalNN
 p = configargparse.ArgParser()
 # -- data
 p.add('--datadir', type=str, help='path to dataset', default='data')
-p.add('--dataset', type=str, help='dataset name', default='aids')
-p.add('--nt_train', type=int, help='time for training', default=100)
+p.add('--dataset', type=str, help='dataset name', default='ncov')
+p.add('--nt_train', type=int, help='time for training', default=10)
 # -- xp
 p.add('--outputdir', type=str, help='path to save xp', default='output')
 p.add('--xp', type=str, help='xp name', default='stnn')
@@ -103,7 +103,7 @@ if opt.device > -1:
 # Data
 #######################################################################################################################
 # -- load data
-setup, (train_data, test_data), relations = dataset_factory(opt.datadir, opt.dataset, opt.nt_train,opt.khop)
+setup, (train_data, test_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train,opt.khop)
 train_data = train_data.to(device)
 test_data = test_data.to(device)
 relations = relations.to(device)

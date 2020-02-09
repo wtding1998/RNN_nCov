@@ -22,7 +22,43 @@ def get_time_data(data_dir, disease_name):
 
     return torch.stack(data, dim=2).float()
 
-
+def get_relations(data_dir, disease_name, k):
+    '''
+    (nt, nx, nrelations, nx)
+    '''
+    relations_dir = os.path.join(data_dir, disease_name, 'relations')
+    relations_names = os.listdir(relations_dir)
+    relations = []
+    for relations_name in relations_names:
+        relations_path = os.path.join(relations_dir, relations_name)
+        relations_time = os.listdir(relations_path)
+        relation_kind = []
+        for t in relations_time:
+            relation_path = os.path.join(relations_path, t)
+            relation = torch.tensor(np.genfromtxt(relation_path, encoding="utf-8-sig", delimiter=","))
+            relation = normalize(relation).unsqueeze(1)
+            new_rels = [relation]
+            for n in range(k - 1):
+                new_rels.append(torch.stack([new_rels[-1][:, r].matmul(new_rels[0][:, r]) for r in range(relation.size(1))], 1))
+            relation = torch.cat(new_rels, 1)
+            relation_kind.append(relation)
+        relation_kind = torch.stack(relation_kind, dim=0)
+        relations.append(relation_kind)
+    relations = torch.cat(relations, dim=2)
+    return relations
+        
+def dataset_factory(data_dir, disease, nt_train, k=1):
+    # get dataset
+    opt, data, relations = get_data_set(data_dir, disease)
+    # make k hop
+    new_rels = [relations]
+    for n in range(k - 1):
+        new_rels.append(torch.stack([new_rels[-1][:, r].matmul(new_rels[0][:, r]) for r in range(relations.size(1))], 1))
+    relations = torch.cat(new_rels, 1)
+    # split train / test
+    train_data = data[:nt_train]
+    test_data = data[nt_train:]
+    return opt, (train_data, test_data), relations
 def get_rnn_dataset(data_dir, disease, nt_train, seq_len):
     # get dataset
     data = get_time_data(data_dir, disease)  #(nt, nx, nd)
@@ -49,12 +85,21 @@ def get_rnn_dataset(data_dir, disease, nt_train, seq_len):
     test_input = torch.stack(test_input, dim=0)
     return opt, (train_input, train_output), (test_input, test_data) 
 
+def get_stnn_data(data_dir, disease, nt_train, k=1):
+    # get dataset
+    data = get_time_data(data_dir, disease_name)
+    opt = DotDict()
+    opt.nt, opt.nx, opt.nd = data.size()
+    relations = get_relations(data_dir, disease_name, k)
+    # make k hop
+    # split train / test
+    train_data = data[:nt_train]
+    test_data = data[nt_train:]
+    return opt, (train_data, test_data), relations
+
+
 if __name__ == "__main__":
-    opt, (train_input, train_output), (test_input, test_output) = get_rnn_dataset('data', 'ncov', 10, 3)
-    print(train_input.size())
-    print(train_output.size())
-    print(test_input.size())
-    print(test_output.size())
+    print(get_relations('data', 'ncov', 3).size())
     # result
     # torch.Size([7, 3, 34, 3])
     # torch.Size([7, 34, 3])
