@@ -22,7 +22,7 @@ def get_time_data(data_dir, disease_name):
 
     return torch.stack(data, dim=2).float()
 
-def get_relations(data_dir, disease_name, k):
+def get_multi_relations(data_dir, disease_name, k):
     '''
     (nx, nrelations, nx, nt)
     '''
@@ -73,13 +73,13 @@ def get_rnn_dataset(data_dir, disease, nt_train, seq_len):
     test_input = torch.stack(test_input, dim=0)
     return opt, (train_input, train_output), (test_input, test_data) 
 
-def get_stnn_data(data_dir, disease_name, nt_train, k=1):
+def get_multi_stnn_data(data_dir, disease_name, nt_train, k=1):
     # get dataset
     data = get_time_data(data_dir, disease_name)
     opt = DotDict()
     opt.nt, opt.nx, opt.nd = data.size()
     opt.periode = opt.nt
-    relations = get_relations(data_dir, disease_name, k)
+    relations = get_multi_relations(data_dir, disease_name, k)
     # ! have to set nt_train = opt.nt - 1
     nt_train = opt.nt - 1
     # make k hop
@@ -90,7 +90,7 @@ def get_stnn_data(data_dir, disease_name, nt_train, k=1):
 
 
 if __name__ == "__main__":
-    print(get_relations('data', 'ncov', 1).size())
+    print(get_multi_relations('data', 'ncov', 1).size())
     # result
     # torch.Size([7, 3, 34, 3])
     # torch.Size([7, 34, 3])

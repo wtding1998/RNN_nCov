@@ -15,7 +15,7 @@ import torch.optim as optim
 import torch.backends.cudnn as cudnn
 
 
-from get_dataset import get_stnn_data
+from get_dataset import get_multi_stnn_data
 from utils import DotDict, Logger, rmse, boolean_string, get_dir, get_time, time_dir
 from stnn import SaptioTemporalNN_multitime
 
@@ -104,7 +104,7 @@ if opt.device > -1:
 #######################################################################################################################
 # -- load data
 
-setup, (train_data, test_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop)
+setup, (train_data, test_data), relations = get_multi_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop)
 # relations = relations[:, :, :, 0]
 train_data = train_data.to(device)
 test_data = test_data.to(device)
