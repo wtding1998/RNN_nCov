@@ -15,9 +15,9 @@ import torch.optim as optim
 import torch.backends.cudnn as cudnn
 
 
-from get_dataset import get_multi_stnn_data
+from get_dataset import get_stnn_data
 from utils import DotDict, Logger, rmse, boolean_string, get_dir, get_time, time_dir
-from stnn import SaptioTemporalNN_multitime
+from stnn import SaptioTemporalNN
 
 
 #######################################################################################################################
@@ -104,17 +104,13 @@ if opt.device > -1:
 #######################################################################################################################
 # -- load data
 
-setup, (train_data, test_data), relations = get_multi_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop)
+setup, (train_data, test_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop)
 # relations = relations[:, :, :, 0]
 train_data = train_data.to(device)
 test_data = test_data.to(device)
 relations = relations.to(device)
 for k, v in setup.items():
     opt[k] = v
-
-# !
-# have to set opt.nt_train = opt.nt - 1
-opt.nt_train = opt.nt - 1
 
 # -- train inputs
 t_idx = torch.arange(opt.nt_train, out=torch.LongTensor()).unsqueeze(1).expand(opt.nt_train, opt.nx).contiguous()
@@ -129,7 +125,7 @@ nex_dec = idx_dec.size(1)
 #######################################################################################################################
 # Model
 #######################################################################################################################
-model = SaptioTemporalNN_multitime(relations, opt.nx, opt.nt_train, opt.nd, opt.nz, opt.mode, opt.nhid, opt.nlayers,
+model = SaptioTemporalNN(relations, opt.nx, opt.nt_train, opt.nd, opt.nz, opt.mode, opt.nhid, opt.nlayers,
                          opt.dropout_f, opt.dropout_d, opt.activation, opt.periode).to(device)
 
 
@@ -244,7 +240,7 @@ for e in pb:
 # ------------------------ Test ------------------------
 model.eval()
 with torch.no_grad():
-    x_pred, _ = model.generate(opt.nt - opt.nt_train, opt.nt_train)
+    x_pred, _ = model.generate(opt.nt - opt.nt_train)
     score_ts = rmse(x_pred, test_data, reduce=False)
     score = rmse(x_pred, test_data)
 logger.log('test.rmse', score)

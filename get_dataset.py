@@ -47,6 +47,25 @@ def get_multi_relations(data_dir, disease_name, k):
     relations = torch.cat(relations, dim=1)
     return relations.float()
 
+def get_relations(data_dir, disease_name, k):
+    '''
+    (nx, nrelations, nx)
+    '''
+    relations_dir = os.path.join(data_dir, disease_name, 'overall_relations')
+    relations_names = os.listdir(relations_dir)
+    relations = []
+    for relation_name in relations_names:
+        relation_path = os.path.join(relations_dir, relation_name)
+        relation = torch.tensor(np.genfromtxt(relation_path, encoding="utf-8-sig", delimiter=","))
+        relation = normalize(relation).unsqueeze(1)
+        new_rels = [relation]
+        for n in range(k - 1):
+            new_rels.append(torch.stack([new_rels[-1][:, r].matmul(new_rels[0][:, r]) for r in range(relation.size(1))], 1))
+        relation = torch.cat(new_rels, 1)
+        relations.append(relation)
+    relations = torch.cat(relations, dim=1)
+    return relations.float()
+
 def get_rnn_dataset(data_dir, disease, nt_train, seq_len):
     # get dataset
     data = get_time_data(data_dir, disease)  #(nt, nx, nd)
@@ -88,9 +107,20 @@ def get_multi_stnn_data(data_dir, disease_name, nt_train, k=1):
     test_data = data[nt_train:]
     return opt, (train_data, test_data), relations
 
+def get_stnn_data(data_dir, disease_name, nt_train, k=1):
+    # get dataset
+    data = get_time_data(data_dir, disease_name)
+    opt = DotDict()
+    opt.nt, opt.nx, opt.nd = data.size()
+    opt.periode = opt.nt
+    relations = get_relations(data_dir, disease_name, k)
+    train_data = data[:nt_train]
+    test_data = data[nt_train:]
+    return opt, (train_data, test_data), relations
+
 
 if __name__ == "__main__":
-    print(get_multi_relations('data', 'ncov', 1).size())
+    print(get_relations('data', 'ncov', 1))
     # result
     # torch.Size([7, 3, 34, 3])
     # torch.Size([7, 34, 3])
