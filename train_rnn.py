@@ -43,7 +43,7 @@ p.add('--nlayers', type=int, help='dynamic function num layers', default=2)
 p.add('--rnn_model', type=str, help='choose rnn model : LSTM | GRU', default='GRU')
 # -- optim
 p.add('--lr', type=float, help='learning rate', default=1e-2)
-p.add('--sch_bound', type=float, help='bound for schedule', default=280)
+p.add('--sch_bound', type=float, help='bound for schedule', default=0.1)
 p.add('--sch_factor', type=float, help='scheduler factor', default=0.9)
 p.add('--clip_value', type=float, help='clip_value for learning', default=1e-1)
 p.add('--beta1', type=float, default=.9, help='adam beta1')

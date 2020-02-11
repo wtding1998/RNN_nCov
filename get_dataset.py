@@ -73,6 +73,8 @@ def get_rnn_dataset(data_dir, disease, nt_train, seq_len, start_time=0):
     opt = DotDict()
     opt.nt, opt.nx, opt.nd = data.size()
     opt.mean = data.mean().item()
+    opt.min = data.min().item()
+    opt.max = data.max().item()
     data = data - opt.mean
     # split train / test
     train_input = []
