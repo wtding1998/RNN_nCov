@@ -6,7 +6,7 @@ import torch
 from utils import DotDict, normalize
 
 
-def get_time_data(data_dir, disease_name):
+def get_time_data(data_dir, disease_name, start_time=0):
     # data_dir = 'data', disease_name = 'ncov' 
     # return (nt, nx, nd) time series data
     time_data_dir = os.path.join(data_dir, disease_name, 'time_data')
@@ -20,9 +20,9 @@ def get_time_data(data_dir, disease_name):
             new_data = new_data.unsqueeze(1)
         data.append(new_data)
 
-    return torch.stack(data, dim=2).float()
+    return torch.stack(data, dim=2).float()[start_time:]
 
-def get_multi_relations(data_dir, disease_name, k):
+def get_multi_relations(data_dir, disease_name, k, start_time=0):
     '''
     (nx, nrelations, nx, nt)
     '''
@@ -45,7 +45,7 @@ def get_multi_relations(data_dir, disease_name, k):
         relation_kind = torch.stack(relation_kind, dim=3)
         relations.append(relation_kind)
     relations = torch.cat(relations, dim=1)
-    return relations.float()
+    return relations.float()[:, :, :, start_time:]
 
 def get_relations(data_dir, disease_name, k):
     '''
@@ -66,9 +66,9 @@ def get_relations(data_dir, disease_name, k):
     relations = torch.cat(relations, dim=1)
     return relations.float()
 
-def get_rnn_dataset(data_dir, disease, nt_train, seq_len):
+def get_rnn_dataset(data_dir, disease, nt_train, seq_len, start_time=0):
     # get dataset
-    data = get_time_data(data_dir, disease)  #(nt, nx, nd)
+    data = get_time_data(data_dir, disease, start_time)  #(nt, nx, nd)
     # get option
     opt = DotDict()
     opt.nt, opt.nx, opt.nd = data.size()
@@ -92,9 +92,9 @@ def get_rnn_dataset(data_dir, disease, nt_train, seq_len):
     test_input = torch.stack(test_input, dim=0)
     return opt, (train_input, train_output), (test_input, test_data) 
 
-def get_multi_stnn_data(data_dir, disease_name, nt_train, k=1):
+def get_multi_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0):
     # get dataset
-    data = get_time_data(data_dir, disease_name)
+    data = get_time_data(data_dir, disease_name, start_time)
     opt = DotDict()
     opt.nt, opt.nx, opt.nd = data.size()
     opt.periode = opt.nt
@@ -107,9 +107,9 @@ def get_multi_stnn_data(data_dir, disease_name, nt_train, k=1):
     test_data = data[nt_train:]
     return opt, (train_data, test_data), relations
 
-def get_stnn_data(data_dir, disease_name, nt_train, k=1):
+def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0):
     # get dataset
-    data = get_time_data(data_dir, disease_name)
+    data = get_time_data(data_dir, disease_name, start_time)
     opt = DotDict()
     opt.nt, opt.nx, opt.nd = data.size()
     opt.periode = opt.nt
@@ -120,7 +120,8 @@ def get_stnn_data(data_dir, disease_name, nt_train, k=1):
 
 
 if __name__ == "__main__":
-    print(get_relations('data', 'ncov', 1))
+    print(get_time_data('data', 'ncov', 0).size())
+    # print(get_relations('data', 'ncov', 1))
     # result
     # torch.Size([7, 3, 34, 3])
     # torch.Size([7, 34, 3])

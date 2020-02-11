@@ -16,7 +16,7 @@ import torch.backends.cudnn as cudnn
 
 from get_dataset import get_rnn_dataset
 from utils import DotDict, Logger, rmse, rmse_tensor, boolean_string, get_dir, get_time, time_dir, shuffle_list
-from rnn_model import LSTMNet, GRUNet
+from rnn_model import LSTMNet, GRUNet, LSTMNet_onelinear, GRUNet_onelinear
 import numpy as np
 
 
@@ -27,7 +27,8 @@ p = configargparse.ArgParser()
 # -- data
 p.add('--datadir', type=str, help='path to dataset', default='data')
 p.add('--dataset', type=str, help='dataset name', default='ncov')
-p.add('--nt_train', type=int, help='time for training', default=11)
+p.add('--nt_train', type=int, help='time for training', default=20)
+p.add('--start_time', type=int, help='time for training', default=0)
 # -- xp
 p.add('--outputdir', type=str, help='path to save xp', default='output')
 p.add('--xp', type=str, help='xp name', default='stnn')
@@ -42,7 +43,7 @@ p.add('--nlayers', type=int, help='dynamic function num layers', default=2)
 p.add('--rnn_model', type=str, help='choose rnn model : LSTM | GRU', default='GRU')
 # -- optim
 p.add('--lr', type=float, help='learning rate', default=1e-2)
-p.add('--sch_bound', type=float, help='bound for schedule', default=6.1e3)
+p.add('--sch_bound', type=float, help='bound for schedule', default=280)
 p.add('--sch_factor', type=float, help='scheduler factor', default=0.9)
 p.add('--clip_value', type=float, help='clip_value for learning', default=1e-1)
 p.add('--beta1', type=float, default=.9, help='adam beta1')
@@ -82,7 +83,7 @@ if opt.device > -1:
 # Data
 #######################################################################################################################
 # -- load data
-setup, (train_input, train_output), (test_input, test_data) = get_rnn_dataset(opt.datadir, opt.dataset, opt.nt_train,opt.seq_length)
+setup, (train_input, train_output), (test_input, test_data) = get_rnn_dataset(opt.datadir, opt.dataset, opt.nt_train,opt.seq_length, opt.start_time)
 train_input = train_input.to(device)
 train_output = train_output.to(device)
 test_input = test_input.to(device)
@@ -109,8 +110,12 @@ opt.start_time = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
 #######################################################################################################################
 if opt.rnn_model == 'LSTM':
     model = LSTMNet(opt.nx * opt.nd, opt.nhid, opt.nlayers, opt.nx * opt.nd, opt.seq_length).to(device)
+if opt.rnn_model == 'LSTM_one':
+    model = LSTMNet_onelinear(opt.nx * opt.nd, opt.nhid, opt.nlayers, opt.nx * opt.nd, opt.seq_length).to(device)
 if opt.rnn_model == 'GRU':
     model = GRUNet(opt.nx * opt.nd, opt.nhid, opt.nlayers, opt.nx * opt.nd, opt.seq_length).to(device)
+if opt.rnn_model == 'GRU_one':
+    model = GRUNet_onelinear(opt.nx * opt.nd, opt.nhid, opt.nlayers, opt.nx * opt.nd, opt.seq_length).to(device)
 
 
 #######################################################################################################################
@@ -142,7 +147,7 @@ for e in pb:
         train_loss.backward()
     ## 按范数裁剪
     ### 这里norm_type可以选择L1范数，L2范数和无穷范数，分别对应`1, 2, 'inf'`
-    # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm, norm_type=2)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0, norm_type=2)
 
     ## 按值裁剪
     ### 指定clip_value之后，裁剪的范围就是[-clip_value, clip_value]
