@@ -31,7 +31,7 @@ p.add('--nt_train', type=int, help='time for training', default=20)
 p.add('--start_time', type=int, help='time for training', default=0)
 # -- xp
 p.add('--outputdir', type=str, help='path to save xp', default='output')
-p.add('--xp', type=str, help='xp name', default='stnn')
+p.add('--xp', type=str, help='xp name', default='rnn')
 p.add('--dir_auto', type=boolean_string, help='dataset_model', default=True)
 p.add('--xp_auto', type=boolean_string, help='time', default=False)
 p.add('--xp_time', type=boolean_string, help='xp_time', default=True)
@@ -45,7 +45,7 @@ p.add('--rnn_model', type=str, help='choose rnn model : LSTM | GRU', default='GR
 p.add('--lr', type=float, help='learning rate', default=1e-2)
 p.add('--sch_bound', type=float, help='bound for schedule', default=0.1)
 p.add('--sch_factor', type=float, help='scheduler factor', default=0.9)
-p.add('--clip_value', type=float, help='clip_value for learning', default=1e-1)
+p.add('--clip_value', type=float, help='clip_value for learning', default=5.0)
 p.add('--beta1', type=float, default=.9, help='adam beta1')
 p.add('--beta2', type=float, default=.999, help='adam beta2')
 p.add('--eps', type=float, default=1e-9, help='adam eps')
@@ -128,9 +128,9 @@ if opt.patience > 0:
 #######################################################################################################################
 # Logs
 #######################################################################################################################
-# logger = Logger(get_dir(opt.outputdir), opt.xp, opt.checkpoint_interval)
-# with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
-#     json.dump(opt, f, sort_keys=True, indent=4)
+logger = Logger(get_dir(opt.outputdir), opt.xp, opt.checkpoint_interval)
+with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
+    json.dump(opt, f, sort_keys=True, indent=4)
 #######################################################################################################################
 # Training
 #######################################################################################################################
@@ -147,7 +147,7 @@ for e in pb:
         train_loss.backward()
     ## 按范数裁剪
     ### 这里norm_type可以选择L1范数，L2范数和无穷范数，分别对应`1, 2, 'inf'`
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0, norm_type=2)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), opt.clip_value, norm_type=2)
 
     ## 按值裁剪
     ### 指定clip_value之后，裁剪的范围就是[-clip_value, clip_value]
@@ -158,7 +158,7 @@ for e in pb:
         # logger.log('train_loss', train_loss.item())
     # checkpoint
     # logger.log('train_epoch.lr', lr)
-    # logger.checkpoint(model)
+    logger.checkpoint(model)
     if opt.test:
         # ------------------------ Test ------------------------
         model.eval()
@@ -183,8 +183,12 @@ with torch.no_grad():
     test_data = test_data.view(opt.nt - opt.nt_train, opt.nx, opt.nd)
     score = rmse(pred, test_data)
     score_ts = rmse(pred, test_data, reduce=False) # 1-dim tensor
-    print(pred + opt.mean)
-    print("test_loss : %f" %score)
+    pred = pred + opt.mean
+    print(pred)
+    print("test_loss : %f" % score)
+    for i in range(opt.nd):
+        d_pred = pred[:,:, i].cpu().numpy()
+        np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred_' + str(i).zfill(3) +  '.txt'), d_pred)
 opt.test_loss = score
 opt.train_loss = train_loss.item()
 opt.end = time_dir()
@@ -192,6 +196,8 @@ end_st = datetime.datetime.now()
 opt.end_time = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
 opt.time = str(end_st - start_st)
 
-# with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
-#     json.dump(opt, f, sort_keys=True, indent=4)
-# logger.save(model)
+with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
+    json.dump(opt, f, sort_keys=True, indent=4)
+logger.save(model)
+
+
