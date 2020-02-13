@@ -117,7 +117,13 @@ def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0):
     opt.periode = opt.nt
     relations = get_relations(data_dir, disease_name, k)
     train_data = data[:nt_train]
+    opt.mean = train_data.mean().item()
+    opt.max = train_data.max().item()
+    opt.min = train_data.min().item()
+    train_data = (train_data - opt.mean) / (opt.max - opt.min)
     test_data = data[nt_train:]
+    test_data = (test_data - opt.mean) / (opt.max - opt.min)
+
     return opt, (train_data, test_data), relations
 
 

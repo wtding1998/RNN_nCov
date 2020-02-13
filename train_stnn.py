@@ -246,7 +246,7 @@ with torch.no_grad():
 logger.log('test.rmse', score)
 logger.log('test.ts', {t: {'rmse': scr.item()} for t, scr in enumerate(score_ts)})
 
-
+x_pred = (x_pred + opt.mean) * (opt.max - opt.min)
 for d in range(opt.nd):
     d_pred = x_pred[:,:, i].cpu().numpy()
     np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred_' + str(i).zfill(3) +  '.txt'), d_pred)
