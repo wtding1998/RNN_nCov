@@ -54,7 +54,7 @@ p.add('--wd', type=float, help='weight decay', default=1e-6)
 # -- learning
 p.add('--batch_size', type=int, default=10, help='batch size')
 p.add('--patience', type=int, default=400, help='number of epoch to wait before trigerring lr decay')
-p.add('--nepoch', type=int, default=100, help='number of epochs to train for')
+p.add('--nepoch', type=int, default=20000, help='number of epochs to train for')
 p.add('--test', type=boolean_string, default=False, help='test during training')
 # -- gpu
 p.add('--device', type=int, default=-1, help='-1: cpu; > -1: cuda device id')
@@ -95,16 +95,17 @@ for k, v in setup.items():
 if opt.dir_auto:
     opt.outputdir = opt.dataset + "_" + opt.rnn_model 
 if opt.xp_time:
-    opt.xp = opt.xp + "_" + get_time()
+    opt.xp = opt.xp + "_" + get_time() + str(random.random())[-2:]
 if opt.xp_auto:
-    opt.xp = get_time()
+    opt.xp = get_time() + str(random.random())[-2:]
 if opt.auto_all:
     opt.outputdir = opt.dataset + "_" + opt.rnn_model 
-    opt.xp = get_time()
+    opt.xp = get_time() + str(random.random())[-2:]
+
 
 opt.start = time_dir()
 start_st = datetime.datetime.now()
-opt.start_time = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
+opt.st = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
 #######################################################################################################################
 # Model
 #######################################################################################################################
@@ -158,7 +159,6 @@ for e in pb:
         # logger.log('train_loss', train_loss.item())
     # checkpoint
     # logger.log('train_epoch.lr', lr)
-    logger.checkpoint(model)
     if opt.test:
         # ------------------------ Test ------------------------
         model.eval()
@@ -193,11 +193,10 @@ opt.test_loss = score
 opt.train_loss = train_loss.item()
 opt.end = time_dir()
 end_st = datetime.datetime.now()
-opt.end_time = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
+opt.et = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
 opt.time = str(end_st - start_st)
 
 with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
     json.dump(opt, f, sort_keys=True, indent=4)
-logger.save(model)
 
 

@@ -93,11 +93,14 @@ class Exp():
         return model
     
     def pred(self, test_input=None, time=0):
-        if os.path.exists(os.path.join(self.path, self.exp_name, 'pred.txt')):
-            pred = np.genfromtxt(os.path.join(self.path, self.exp_name, 'pred.txt'))
-        else:
-            print('no pred.txt')
-            pred = None
+        pa = os.path.join(self.path, self.exp_name)
+        files = os.listdir(pa)
+        for file_name in files:
+            print(file_name)
+            if '.txt' in file_name:
+                pred = torch.tensor(np.genfromtxt(os.path.join(self.path, self.exp_name, file_name), delimiter=','))
+        if len(pred.size()) == 1:
+            pred = pred.unsqueeze(0)
         return torch.tensor(pred)
           
 class Printer():

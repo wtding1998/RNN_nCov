@@ -133,7 +133,7 @@ class SaptioTemporalNN(nn.Module):
         self.nr = self.relations.size(1)  # number of relations, here nr = 2
         # modules
         self.drop = nn.Dropout(dropout_f)
-        self.factors = nn.Parameter(torch.Tensor(nt, nx, nz))
+        self.factors = nn.Parameter(torch.randn(nt, nx, nz))
         self.dynamic = MLP(nz * self.nr, nhid, nz, nlayers, dropout_d)
         self.decoder = nn.Linear(nz, nd, bias=False)
         if mode == 'refine':
@@ -145,7 +145,7 @@ class SaptioTemporalNN(nn.Module):
         self._init_weights(periode)
 
     def _init_weights(self, periode):   #初始化权重
-        initrange = 0.1
+        initrange = 1.0
         if periode >= self.nt:
             self.factors.data.uniform_(-initrange, initrange)
         else:

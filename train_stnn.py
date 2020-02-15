@@ -26,8 +26,9 @@ from stnn import SaptioTemporalNN
 p = configargparse.ArgParser()
 # -- data
 p.add('--datadir', type=str, help='path to dataset', default='data')
-p.add('--dataset', type=str, help='dataset name', default='ncov')
+p.add('--dataset', type=str, help='dataset name', default='ncov_confirmed')
 p.add('--nt_train', type=int, help='time for training', default=10)
+p.add('--start_time', type=int, help='start time for data', default=0)
 # -- xp
 p.add('--outputdir', type=str, help='path to save xp', default='output')
 p.add('--xp', type=str, help='xp name', default='stnn')
@@ -83,7 +84,7 @@ opt.mode = opt.mode if opt.mode in ('refine', 'discover') else None
 
 opt.start = time_dir()
 start_st = datetime.datetime.now()
-opt.start_time = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
+opt.st = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
 # cudnn
 if opt.device > -1:
     os.environ["CUDA_VISIBLE_DEVICES"] = str(opt.device)
@@ -104,7 +105,7 @@ if opt.device > -1:
 #######################################################################################################################
 # -- load data
 
-setup, (train_data, test_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop)
+setup, (train_data, test_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop, opt.start_time)
 # relations = relations[:, :, :, 0]
 train_data = train_data.to(device)
 test_data = test_data.to(device)
@@ -176,7 +177,7 @@ for e in pb:
         # step
         optimizer.step()
         # log
-        logger.log('train_iter.mse_dec', mse_dec.item())
+        # logger.log('train_iter.mse_dec', mse_dec.item())
         logs_train['mse_dec'] += mse_dec.item() * len(batch)
     # --- dynamic ---
     idx_perm = torch.randperm(nex_dyn).to(device)
@@ -212,14 +213,14 @@ for e in pb:
 
     # --- logs ---
     # TODO:
-    # logs_train['mse_dec'] /= nex_dec
-    # logs_train['mse_dyn'] /= nex_dyn
-    # logs_train['loss_dyn'] /= nex_dyn
+    logs_train['mse_dec'] /= nex_dec
+    logs_train['mse_dyn'] /= nex_dyn
+    logs_train['loss_dyn'] /= nex_dyn
     logs_train['loss'] = logs_train['mse_dec'] + logs_train['loss_dyn']
-    logger.log('train_epoch', logs_train)
+    # logger.log('train_epoch', logs_train)
     # checkpoint
     # logger.log('train_epoch.lr', lr)
-    logger.checkpoint(model)
+    # logger.checkpoint(model)
     # ------------------------ Test ------------------------
     if opt.test:
         model.eval()
@@ -229,7 +230,7 @@ for e in pb:
         pb.set_postfix(loss=logs_train['loss'], test=score)
         logger.log('test_epoch.rmse', score)
             # schedule lr
-        if opt.patience > 0 and score < 0.07:
+        if opt.patience > 0 and score < 0.017:
             lr_scheduler.step(score)
         lr = optimizer.param_groups[0]['lr']
         if lr <= 1e-5:
@@ -243,22 +244,30 @@ with torch.no_grad():
     x_pred, _ = model.generate(opt.nt - opt.nt_train)
     score_ts = rmse(x_pred, test_data, reduce=False)
     score = rmse(x_pred, test_data)
-logger.log('test.rmse', score)
-logger.log('test.ts', {t: {'rmse': scr.item()} for t, scr in enumerate(score_ts)})
-
-x_pred = (x_pred + opt.mean) * (opt.max - opt.min)
-for d in range(opt.nd):
+# logger.log('test.rmse', score)
+# logger.log('test.ts', {t: {'rmse': scr.item()} for t, scr in enumerate(score_ts)})
+new_pred_data = x_pred.detach()
+new_test_data = test_data.detach()
+if opt.rescaled == 'd':
+    for i in range(opt.nd):
+        new_pred_data[:,:, i] = x_pred[:,:, i] * (opt.max[i] - opt.min[i]) + opt.mean[i]
+        new_test_data[:,:, i] = test_data[:,:, i] * (opt.max[i] - opt.min[i]) + opt.mean[i]
+elif opt.rescaled == 'x'            
+    for i in range(opt.nx):
+        new_pred_data[:, i, :] = x_pred[:, i, :] * (opt.max[i] - opt.min[i]) + opt.mean[i]
+        new_test_data[:, i, :] = test_data[:, i, :] * (opt.max[i] - opt.min[i]) + opt.mean[i]
+for i in range(opt.nd):
     d_pred = x_pred[:,:, i].cpu().numpy()
-    np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred_' + str(i).zfill(3) +  '.txt'), d_pred)
+    print(d_pred)
+    np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred_' + str(i).zfill(3) +  '.txt'), d_pred, delimiter=',')
 
 opt.test_loss = score
-# logs_train['loss'] = logs_train['mse_dec'] + logs_train['loss_dyn']
+logs_train['loss'] = logs_train['mse_dec'] + logs_train['loss_dyn']
 opt.train_loss = logs_train['loss']
 
 opt.end = time_dir()
 end_st = datetime.datetime.now()
-opt.end_time = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
+opt.et = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
 opt.time = str(end_st - start_st)
 with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
     json.dump(opt, f, sort_keys=True, indent=4)
-logger.save(model)

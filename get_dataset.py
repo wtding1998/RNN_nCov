@@ -109,21 +109,44 @@ def get_multi_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0):
     test_data = data[nt_train:]
     return opt, (train_data, test_data), relations
 
-def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0):
+def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0, rescaled_method='d'):
     # get dataset
     data = get_time_data(data_dir, disease_name, start_time)
     opt = DotDict()
     opt.nt, opt.nx, opt.nd = data.size()
+    opt.rescale = rescaled_method
     opt.periode = opt.nt
     relations = get_relations(data_dir, disease_name, k)
     train_data = data[:nt_train]
-    opt.mean = train_data.mean().item()
-    opt.max = train_data.max().item()
-    opt.min = train_data.min().item()
-    train_data = (train_data - opt.mean) / (opt.max - opt.min)
-    test_data = data[nt_train:]
-    test_data = (test_data - opt.mean) / (opt.max - opt.min)
-
+    new_data = data.detach()
+    if rescaled_method == 'd':
+        opt.mean = []
+        opt.max = []
+        opt.min = []
+        for i in range(opt.nd):
+            processed_data = new_data[:,:, i]
+            processed_mean = processed_data.mean().item()
+            processed_max = processed_data.max().item()
+            processed_min = processed_data.min().item()
+            opt.mean.append(processed_mean)
+            opt.max.append(processed_max)
+            opt.min.append(processed_min)
+            new_data[:, :, i] = (processed_data - processed_mean) / (processed_max - processed_min)
+    elif rescaled_method == 'x':
+        opt.mean = []
+        opt.max = []
+        opt.min = []
+        for i in range(opt.nx):
+            processed_data = new_data[:, i, :]
+            processed_mean = processed_data.mean().item()
+            processed_max = processed_data.max().item()
+            processed_min = processed_data.min().item()
+            opt.mean.append(processed_mean)
+            opt.max.append(processed_max)
+            opt.min.append(processed_min)
+            new_data[:, i, :] = (processed_data - processed_mean) / (processed_max - processed_min)
+    test_data = new_data[nt_train:]
+    train_data = new_data[:nt_train]
     return opt, (train_data, test_data), relations
 
 
