@@ -27,11 +27,11 @@ p = configargparse.ArgParser()
 # -- data
 p.add('--datadir', type=str, help='path to dataset', default='data')
 p.add('--dataset', type=str, help='dataset name', default='ncov_confirmed')
-p.add('--nt_train', type=int, help='time for training', default=10)
+p.add('--nt_train', type=int, help='time for training', default=15)
 p.add('--start_time', type=int, help='start time for data', default=0)
 # -- xp
 p.add('--outputdir', type=str, help='path to save xp', default='output')
-p.add('--xp', type=str, help='xp name', default='stnn')
+p.add('--xp', type=str, help='xp name', default='stnn_noz')
 p.add('--dir_auto', type=boolean_string, help='dataset_model', default=True)
 p.add('--xp_auto', type=boolean_string, help='time', default=False)
 p.add('--xp_time', type=boolean_string, help='xp_time', default=True)
@@ -41,8 +41,8 @@ p.add('--mode', type=str, help='STNN mode (default|refine|discover)', default='d
 p.add('--nz', type=int, help='laten factors size', default=1)
 p.add('--activation', type=str, help='dynamic module activation function (identity|tanh)', default='tanh')
 p.add('--khop', type=int, help='spatial depedencies order', default=1)
-p.add('--nhid', type=int, help='dynamic function hidden size', default=0)
-p.add('--nlayers', type=int, help='dynamic function num layers', default=1)
+p.add('--nhid', type=int, help='dynamic function hidden size', default=100)
+p.add('--nlayers', type=int, help='dynamic function num layers', default=2)
 p.add('--dropout_f', type=float, help='latent factors dropout', default=.5)
 p.add('--dropout_d', type=float, help='dynamic function dropout', default=.5)
 p.add('--lambd', type=float, help='lambda between reconstruction and dynamic losses', default=.1)
@@ -131,6 +131,7 @@ model = SaptioTemporalNN_noz(relations, opt.nx, opt.nt_train, opt.nd, opt.nz, op
 #  print(train_data)
 #  print(train_data.size()) (10, 31, 1)
 model.factors = train_data
+print(model.factors)
 
 #######################################################################################################################
 # Optimizer
@@ -248,22 +249,26 @@ with torch.no_grad():
     score = rmse(x_pred, test_data)
 # logger.log('test.rmse', score)
 # logger.log('test.ts', {t: {'rmse': scr.item()} for t, scr in enumerate(score_ts)})
-new_pred_data = x_pred.detach()
-new_test_data = test_data.detach()
+true_pred_data = x_pred.detach()
+true_test_data = test_data.detach()
 if opt.rescaled == 'd':
     for i in range(opt.nd):
-        new_pred_data[:,:, i] = x_pred[:,:, i] * (opt.max[i] - opt.min[i]) + opt.mean[i]
-        new_test_data[:,:, i] = test_data[:,:, i] * (opt.max[i] - opt.min[i]) + opt.mean[i]
+        true_pred_data[:,:, i] = x_pred[:,:, i] * (opt.max[i] - opt.min[i]) + opt.mean[i]
+        true_test_data[:,:, i] = test_data[:,:, i] * (opt.max[i] - opt.min[i]) + opt.mean[i]
 elif opt.rescaled == 'x':            
     for i in range(opt.nx):
-        new_pred_data[:, i, :] = x_pred[:, i, :] * (opt.max[i] - opt.min[i]) + opt.mean[i]
-        new_test_data[:, i, :] = test_data[:, i, :] * (opt.max[i] - opt.min[i]) + opt.mean[i]
+        true_pred_data[:, i, :] = x_pred[:, i, :] * (opt.max[i] - opt.min[i]) + opt.mean[i]
+        true_test_data[:, i, :] = test_data[:, i, :] * (opt.max[i] - opt.min[i]) + opt.mean[i]
 for i in range(opt.nd):
     d_pred = x_pred[:,:, i].cpu().numpy()
-    print(d_pred)
+    # print(d_pred)
     np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred_' + str(i).zfill(3) +  '.txt'), d_pred, delimiter=',')
-
+# todo
+# add rmse for true pred and test data
+true_score = rmse(true_pred_data, true_test_data)
+print(true_score)
 opt.test_loss = score
+opt.true_test_loss = true_score
 logs_train['loss'] = logs_train['mse_dec'] + logs_train['loss_dyn']
 opt.train_loss = logs_train['loss']
 
@@ -273,3 +278,5 @@ opt.et = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
 opt.time = str(end_st - start_st)
 with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
     json.dump(opt, f, sort_keys=True, indent=4)
+
+
