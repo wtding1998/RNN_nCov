@@ -396,6 +396,7 @@ class SaptioTemporalNN_large(nn.Module):
         self.nt = nt
         self.nx = nx
         self.nz = nz
+        self.nd = nd
         self.mode = mode
         # kernel
         self.activation = torch.tanh if activation == 'tanh' else identity if activation == 'identity' else None
@@ -460,8 +461,6 @@ class SaptioTemporalNN_large(nn.Module):
         original : z(batch, self.nz)
         new : z(batch, self.nx * self.nz)
         '''
-        print('relation', self.get_relations().size())
-        print('z', z.size())
         rels = self.get_relations()
         z_context = []
         for r in range(rels.size(1)):
@@ -470,8 +469,6 @@ class SaptioTemporalNN_large(nn.Module):
         # z_context = self.get_relations().matmul(z)
         # z_context = z_context.view(-1, self.nr * self.nz * self.nx)
         z_next = self.dynamic(z_context)
-        print('z_context', z_context.size())
-        print('z_next', z_next.size())
         return self.activation(z_next).view(self.nx, self.nz)
 
     def decode_z(self, z):
@@ -506,7 +503,7 @@ class SaptioTemporalNN_large(nn.Module):
             z = self.update_z(z)
             z_gen.append(z)
         z_gen = torch.stack(z_gen).view(-1, self.nx * self.nz)
-        x_gen = self.decode_z(z_gen)
+        x_gen = self.decode_z(z_gen).view(-1, self.nx, self.nd)
         return x_gen, z_gen
 
     def factors_parameters(self):

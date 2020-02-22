@@ -282,7 +282,7 @@ for e in pb:
 model.eval()
 with torch.no_grad():
     x_pred, _ = model.generate(opt.nt - opt.nt_train)
-    x_pred = x_pred.view(opt.nt - opt.nt_train, opt.nx, opt.nd)
+    # x_pred = x_pred.view(opt.nt - opt.nt_train, opt.nx, opt.nd)
     score_ts = rmse(x_pred, test_data, reduce=False)
     score = rmse(x_pred, test_data)
 # logger.log('test.rmse', score)
