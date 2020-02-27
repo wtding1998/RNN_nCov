@@ -1,4 +1,9 @@
 # Todo
+
+## ncov
+
+- [ ] 
+
 ## Code
 - [x] add GRU model
     - [x] add GRU model in rnn_model.py

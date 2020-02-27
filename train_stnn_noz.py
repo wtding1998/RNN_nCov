@@ -249,8 +249,10 @@ with torch.no_grad():
     score = rmse(x_pred, test_data)
 # logger.log('test.rmse', score)
 # logger.log('test.ts', {t: {'rmse': scr.item()} for t, scr in enumerate(score_ts)})
-true_pred_data = x_pred.detach()
-true_test_data = test_data.detach()
+
+
+true_pred_data = torch.randn_like(x_pred)
+true_test_data = torch.randn_like(test_data)
 if opt.rescaled == 'd':
     for i in range(opt.nd):
         true_pred_data[:,:, i] = x_pred[:,:, i] * (opt.max[i] - opt.min[i]) + opt.mean[i]
@@ -259,24 +261,25 @@ elif opt.rescaled == 'x':
     for i in range(opt.nx):
         true_pred_data[:, i, :] = x_pred[:, i, :] * (opt.max[i] - opt.min[i]) + opt.mean[i]
         true_test_data[:, i, :] = test_data[:, i, :] * (opt.max[i] - opt.min[i]) + opt.mean[i]
+true_score = rmse(true_pred_data, true_test_data)
+# print(true_pred_data)
 for i in range(opt.nd):
     d_pred = x_pred[:,:, i].cpu().numpy()
     # print(d_pred)
     np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred_' + str(i).zfill(3) +  '.txt'), d_pred, delimiter=',')
-# todo
-# add rmse for true pred and test data
-true_score = rmse(true_pred_data, true_test_data)
-print(true_score)
+
+for i in range(opt.nd):
+    d_pred =true_pred_data[:,:, i].cpu().numpy()
+    # print(d_pred)
+    np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'true_pred_' + str(i).zfill(3) +  '.txt'), d_pred, delimiter=',')
+
 opt.test_loss = score
-opt.true_test_loss = true_score
+opt.true_loss = true_score
 logs_train['loss'] = logs_train['mse_dec'] + logs_train['loss_dyn']
 opt.train_loss = logs_train['loss']
-
 opt.end = time_dir()
 end_st = datetime.datetime.now()
 opt.et = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
 opt.time = str(end_st - start_st)
 with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
     json.dump(opt, f, sort_keys=True, indent=4)
-
-

@@ -214,12 +214,8 @@ class SaptioTemporalNN(nn.Module):
             return torch.cat((intra, inter), 1)
 
     def update_z(self, z):
-        print('relation', self.get_relations().size())
-        print('z', z.size())
         z_context = self.get_relations().matmul(z).view(-1, self.nr * self.nz)
         z_next = self.dynamic(z_context)
-        print('z_context', z_context.size())
-        print('z_next', z_next.size())
         return self.activation(z_next)
 
     def decode_z(self, z):

@@ -114,7 +114,7 @@ def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0, rescaled_
     data = get_time_data(data_dir, disease_name, start_time)
     opt = DotDict()
     opt.nt, opt.nx, opt.nd = data.size()
-    opt.rescale = rescaled_method
+    opt.rescaled = rescaled_method
     opt.periode = opt.nt
     relations = get_relations(data_dir, disease_name, k)
     train_data = data[:nt_train]
