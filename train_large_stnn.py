@@ -238,7 +238,7 @@ for e in pb:
                 model.factors[batch]).pow(2).mean()
         if opt.mode in ('refine', 'discover') and opt.l1_rel > 0:
             # rel_weights_tmp = model.rel_weights.data.clone()
-            loss_dyn += opt.l1_rel * model.get_relations(batch).abs().mean()
+            loss_dyn += opt.l1_rel * model.get_relations().abs().mean()
         # backward
         loss_dyn.backward()
         # step
@@ -323,3 +323,6 @@ opt.et = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
 opt.time = str(end_st - start_st)
 with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
     json.dump(opt, f, sort_keys=True, indent=4)
+
+print("large", score)
+print("large_true", true_score)

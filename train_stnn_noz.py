@@ -200,7 +200,7 @@ for e in pb:
             loss_dyn += opt.l2_z * model.factors[input_t - 1, input_x].sub(model.factors[input_t, input_x]).pow(2).mean()
         if opt.mode in('refine', 'discover') and opt.l1_rel > 0:
             # rel_weights_tmp = model.rel_weights.data.clone()
-            loss_dyn += opt.l1_rel * model.get_relations(input_t).abs().mean()
+            loss_dyn += opt.l1_rel * model.get_relations().abs().mean()
         # backward
         loss_dyn.backward()
         # step
