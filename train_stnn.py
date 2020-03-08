@@ -27,7 +27,7 @@ p = configargparse.ArgParser()
 # -- data
 p.add('--datadir', type=str, help='path to dataset', default='data')
 p.add('--dataset', type=str, help='dataset name', default='ncov_confirmed')
-p.add('--nt_train', type=int, help='time for training', default=10)
+p.add('--nt_train', type=int, help='time for training', default=15)
 p.add('--start_time', type=int, help='start time for data', default=0)
 p.add('--rescaled', type=str, help='rescaled method', default='d')
 
@@ -130,15 +130,15 @@ nex_dec = idx_dec.size(1)
 # Model
 #######################################################################################################################
 model = SaptioTemporalNN(relations, opt.nx, opt.nt_train, opt.nd, opt.nz, opt.mode, opt.nhid, opt.nlayers,
-                         opt.dropout_f, opt.dropout_d, opt.activation, opt.periode).to(device)
+                        opt.dropout_f, opt.dropout_d, opt.activation, opt.periode).to(device)
 
 
 #######################################################################################################################
 # Optimizer
 #######################################################################################################################
 params = [{'params': model.factors_parameters(), 'weight_decay': opt.wd_z},
-          {'params': model.dynamic.parameters()},
-          {'params': model.decoder.parameters()}]
+        {'params': model.dynamic.parameters()},
+        {'params': model.decoder.parameters()}]
 if opt.mode in ('refine', 'discover'):
     params.append({'params': model.rel_parameters(), 'weight_decay': 0.})
 optimizer = optim.Adam(params, lr=opt.lr, betas=(opt.beta1, opt.beta2), eps=opt.eps, weight_decay=opt.wd)
