@@ -43,9 +43,9 @@ def train(command=False):
         p.add('--rescaled', type=str, help='rescaled method', default='d')
 
         # -- xp
-        p.add('--outputdir', type=str, help='path to save xp', default='output')
+        p.add('--outputdir', type=str, help='path to save xp', default='default')
         p.add('--xp', type=str, help='xp name', default='stnn')
-        p.add('--dir_auto', type=boolean_string, help='dataset_model', default=True)
+        # p.add('--dir_auto', type=boolean_string, help='dataset_model', default=True)
         p.add('--xp_auto', type=boolean_string, help='time', default=False)
         p.add('--xp_time', type=boolean_string, help='xp_time', default=True)
         p.add('--auto', type=boolean_string, help='dataset_model + time', default=False)
@@ -96,9 +96,9 @@ def train(command=False):
         opt.rescaled = 'd'
 
         # -- xp
-        opt.outputdir = 'output'
+        opt.outputdir = 'default'
         opt.xp = 'stnn'
-        opt.dir_auto =  True
+        # opt.dir_auto =  True
         opt.xp_auto =  False
         opt.xp_time =  True
         opt.auto = False
@@ -130,8 +130,12 @@ def train(command=False):
         opt.device = -1
         print(opt)
 
-    if opt.dir_auto:
-        opt.outputdir = opt.dataset + "_" + opt.mode 
+    # if opt.dir_auto:
+    #     opt.outputdir = opt.dataset + "_" + opt.mode 
+    if opt.outputdir == 'default':
+        opt.outputdir = opt.dataset + "_" + opt.mode
+    opt.outputdir = get_dir(opt.outputdir)
+
     if opt.xp_time:
         opt.xp = opt.xp + "_" + get_time()
     if opt.xp_auto:
@@ -139,7 +143,6 @@ def train(command=False):
     if opt.auto_all:
         opt.outputdir = opt.dataset + "_" + opt.mode 
         opt.xp = get_time()
-    opt.outputdir = get_dir(opt.outputdir)
     opt.mode = opt.mode if opt.mode in ('refine', 'discover') else None
 
     opt.start = time_dir()
