@@ -61,6 +61,7 @@ def train(command=False):
         p.add('--lambd', type=float, help='lambda between reconstruction and dynamic losses', default=.1)
         # -- optim
         p.add('--lr', type=float, help='learning rate', default=3e-3)
+        p.add('--optimizer', type=str, help='learning algorithm', default='Adam')
         p.add('--beta1', type=float, default=.0, help='adam beta1')
         p.add('--beta2', type=float, default=.999, help='adam beta2')
         p.add('--eps', type=float, default=1e-9, help='adam eps')
@@ -199,7 +200,16 @@ def train(command=False):
             {'params': model.decoder.parameters()}]
     if opt.mode in ('refine', 'discover'):
         params.append({'params': model.rel_parameters(), 'weight_decay': 0.})
-    optimizer = optim.Adam(params, lr=opt.lr, betas=(opt.beta1, opt.beta2), eps=opt.eps, weight_decay=opt.wd)
+
+    if opt.optimizer == 'Adam':
+        optimizer = optim.Adam(params, lr=opt.lr, betas=(opt.beta1, opt.beta2), eps=opt.eps, weight_decay=opt.wd)
+    elif opt.optimizer == 'SGD':
+        optimizer = optim.SGD(params, lr=opt.lr, weight_decay=opt.wd)
+    elif opt.optimizer == 'Rmsprop':
+        optimizer = optim.RMSprop(params, lr=opt.lr, weight_decay=opt.wd)
+    elif opt.optimizer == 'Adagrad':
+        optimizer = optim.Adagrad(params, lr=opt.lr, weight_decay=opt.wd)
+
     if opt.patience > 0:
         lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=opt.patience)
 
@@ -272,7 +282,7 @@ def train(command=False):
             #     sign_changed = rel_weights_tmp.sign().ne(model.rel_weights.data.sign())
             #     model.rel_weights.data.masked_fill_(sign_changed, 0)
             # log
-            logger.log('train_iter.mse_dyn', mse_dyn.item())
+            # logger.log('train_iter.mse_dyn', mse_dyn.item())
             logs_train['mse_dyn'] += mse_dyn.item() * len(batch)
             logs_train['loss_dyn'] += loss_dyn.item() * len(batch)
 
