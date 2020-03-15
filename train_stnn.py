@@ -298,7 +298,7 @@ def train(command=False):
         logger.log('train_epoch', logs_train)
         # checkpoint
         # logger.log('train_epoch.lr', lr)
-        # logger.checkpoint(model)
+        logger.checkpoint(model)
         # ------------------------ Test ------------------------
         if opt.test:
             model.eval()

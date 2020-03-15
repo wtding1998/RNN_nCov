@@ -61,8 +61,8 @@ class Logger(object):
             self.logs[key].append(value)
 
     def checkpoint(self, model):
-        if (self.logs['epoch'] + 1) % self.chkpt_interval == 0:
-            self.save(model)
+        # if (self.logs['epoch'] + 1) % self.chkpt_interval == 0:
+        #     self.save(model)
         self.logs['epoch'] += 1
 
     def save(self, model):
