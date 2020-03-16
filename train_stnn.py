@@ -41,6 +41,7 @@ def train(command=False):
         p.add('--nt_train', type=int, help='time for training', default=15)
         p.add('--start_time', type=int, help='start time for data', default=0)
         p.add('--rescaled', type=str, help='rescaled method', default='d')
+        p.add('--normalize_method', type=str, help='normalize method for relation', default='row')
 
         # -- xp
         p.add('--outputdir', type=str, help='path to save xp', default='default')
@@ -89,12 +90,13 @@ def train(command=False):
     else:
         print('Use Matlab')
         opt = DotDict()
+        # -- data
         opt.datadir = 'data'
         opt.dataset = 'ncov_confirmed'
         opt.nt_train = 15
         opt.start_time = 0
         opt.rescaled = 'd'
-
+        opt.normalize_method = 'row'
         # -- xp
         opt.outputdir = 'default'
         opt.xp = 'stnn'
@@ -170,7 +172,7 @@ def train(command=False):
     #######################################################################################################################
     # -- load data
 
-    setup, (train_data, test_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop, opt.start_time, opt.rescaled)
+    setup, (train_data, test_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop, opt.start_time, rescaled_method=opt.rescaled, normalize_method=opt.normalize_method)
     # relations = relations[:, :, :, 0]
     train_data = train_data.to(device)
     test_data = test_data.to(device)

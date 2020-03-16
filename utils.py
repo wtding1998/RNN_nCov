@@ -31,6 +31,11 @@ def normalize(mx):
     mx = r_mat_inv.matmul(mx)
     return mx
 
+def normalize_all_row(mx):
+    """2-normalize matrix"""
+    nm = torch.norm(mx)
+    return mx/nm
+
 
 def identity(input):
     return input

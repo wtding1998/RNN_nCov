@@ -3,7 +3,7 @@ import os
 import numpy as np
 import torch
 
-from utils import DotDict, normalize
+from utils import DotDict, normalize, normalize_all_row
 
 
 def get_time_data(data_dir, disease_name, start_time=0):
@@ -47,7 +47,7 @@ def get_multi_relations(data_dir, disease_name, k, start_time=0):
     relations = torch.cat(relations, dim=1)
     return relations.float()[:, :, :, start_time:]
 
-def get_relations(data_dir, disease_name, k):
+def get_relations(data_dir, disease_name, k, normalize_method='row'):
     '''
     (nx, nrelations, nx)
     '''
@@ -57,7 +57,10 @@ def get_relations(data_dir, disease_name, k):
     for relation_name in relations_names:
         relation_path = os.path.join(relations_dir, relation_name)
         relation = torch.tensor(np.genfromtxt(relation_path, encoding="utf-8-sig", delimiter=","))
-        relation = normalize(relation).unsqueeze(1)
+        if normalize_method == 'row':
+            relation = normalize(relation).unsqueeze(1)
+        else:
+            relation = normalize_all_row(relation).unsqueeze(1)
         new_rels = [relation]
         for n in range(k - 1):
             new_rels.append(torch.stack([new_rels[-1][:, r].matmul(new_rels[0][:, r]) for r in range(relation.size(1))], 1))
@@ -109,14 +112,14 @@ def get_multi_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0):
     test_data = data[nt_train:]
     return opt, (train_data, test_data), relations
 
-def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0, rescaled_method='d'):
+def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0, rescaled_method='d', normalize_method='row'):
     # get dataset
     data = get_time_data(data_dir, disease_name, start_time)
     opt = DotDict()
     opt.nt, opt.nx, opt.nd = data.size()
     opt.rescaled = rescaled_method
     opt.periode = opt.nt
-    relations = get_relations(data_dir, disease_name, k)
+    relations = get_relations(data_dir, disease_name, k, normalize_method=normalize_method)
     train_data = data[:nt_train]
     new_data = data.detach()
     if rescaled_method == 'd':
