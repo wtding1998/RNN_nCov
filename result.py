@@ -8,6 +8,10 @@ from rnn_model import *
 from utils import normalize, DotDict, Logger, rmse, rmse_tensor, boolean_string, get_dir, get_time, next_dir, get_model, model_dir
 from stnn import SaptioTemporalNN
 
+def test_reload():
+    print('4')
+    return 0
+
 def get_config(model_dir):
     # get config
     with open(os.path.join(model_dir, 'config.json')) as f:
@@ -79,6 +83,9 @@ class Exp():
 
     def logs(self):
         return get_logs(os.path.join(self.path, self.exp_name))
+
+    def train_loss(self):
+        return self.logs()['train_epoch.loss']
 
     def model(self):
         if self.model_name() == 'LSTM':

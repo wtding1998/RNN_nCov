@@ -31,10 +31,7 @@
     - info
 - [x] save and load model
 - [x] add pred for STNN
-- [ ] load model for STNN
-- [ ] enumerate exp by config
-- [ ] RNN_F
-- [ ] combine RNN and STNN
+- [ ] avoid error when test_loss and train_loss miss
 - [x] for the given model list, finish the jupyter notebook to get the information of them.
 - [x] add start time and end time in config
 
