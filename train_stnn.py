@@ -27,7 +27,7 @@ import torch.backends.cudnn as cudnn
 
 from get_dataset import get_stnn_data
 from utils import DotDict, Logger, rmse, boolean_string, get_dir, get_time, time_dir
-from stnn import SaptioTemporalNN
+from stnn import SaptioTemporalNN, SaptioTemporalNN_largedecoder
 
 def train(command=False):
     if command == True:
@@ -38,7 +38,7 @@ def train(command=False):
         # -- data
         p.add('--datadir', type=str, help='path to dataset', default='data')
         p.add('--dataset', type=str, help='dataset name', default='ncov_confirmed')
-        p.add('--nt_train', type=int, help='time for training', default=15)
+        p.add('--nt_train', type=int, help='time for training', default=50)
         p.add('--start_time', type=int, help='start time for data', default=0)
         p.add('--rescaled', type=str, help='rescaled method', default='d')
         p.add('--normalize_method', type=str, help='normalize method for relation', default='row')
@@ -51,14 +51,18 @@ def train(command=False):
         p.add('--xp_time', type=boolean_string, help='xp_time', default=True)
         p.add('--auto', type=boolean_string, help='dataset_model + time', default=False)
         # -- model
+        p.add('--model', type=str, help='STNN Model', default='default')
         p.add('--mode', type=str, help='STNN mode (default|refine|discover)', default='default')
         p.add('--nz', type=int, help='laten factors size', default=1)
         p.add('--activation', type=str, help='dynamic module activation function (identity|tanh)', default='tanh')
         p.add('--khop', type=int, help='spatial depedencies order', default=1)
         p.add('--nhid', type=int, help='dynamic function hidden size', default=0)
         p.add('--nlayers', type=int, help='dynamic function num layers', default=1)
+        p.add('--nhid_de', type=int, help='dynamic function hidden size', default=0)
+        p.add('--nlayers_de', type=int, help='dynamic function num layers', default=1)
         p.add('--dropout_f', type=float, help='latent factors dropout', default=.5)
         p.add('--dropout_d', type=float, help='dynamic function dropout', default=.5)
+        p.add('--dropout_de', type=float, help='dynamic function dropout', default=.5)
         p.add('--lambd', type=float, help='lambda between reconstruction and dynamic losses', default=.1)
         # -- optim
         p.add('--lr', type=float, help='learning rate', default=3e-3)
@@ -193,9 +197,12 @@ def train(command=False):
     #######################################################################################################################
     # Model
     #######################################################################################################################
-    model = SaptioTemporalNN(relations, opt.nx, opt.nt_train, opt.nd, opt.nz, opt.mode, opt.nhid, opt.nlayers,
+    if opt.model == 'default':
+        model = SaptioTemporalNN(relations, opt.nx, opt.nt_train, opt.nd, opt.nz, opt.mode, opt.nhid, opt.nlayers,
                             opt.dropout_f, opt.dropout_d, opt.activation, opt.periode).to(device)
-
+    elif opt.model == 'ld':
+        model = SaptioTemporalNN_largedecoder(relations, opt.nx, opt.nt_train, opt.nd, opt.nz, opt.mode, opt.nhid, opt.nlayers, opt.nhid_de, opt.nlayers_de, opt.dropout_de,
+                            opt.dropout_f, opt.dropout_d, opt.activation, opt.periode).to(device)
 
     #######################################################################################################################
     # Optimizer
