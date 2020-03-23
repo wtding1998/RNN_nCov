@@ -27,7 +27,7 @@ import torch.backends.cudnn as cudnn
 
 from get_dataset import get_stnn_data
 from utils import DotDict, Logger, rmse, boolean_string, get_dir, get_time, time_dir
-from stnn import SaptioTemporalNN, SaptioTemporalNN_largedecoder
+from stnn import SaptioTemporalNN, SaptioTemporalNN_largedecoder, SaptioTemporalNN_GRU
 
 def train(command=False):
     if command == True:
@@ -200,6 +200,9 @@ def train(command=False):
     if opt.model == 'default':
         model = SaptioTemporalNN(relations, opt.nx, opt.nt_train, opt.nd, opt.nz, opt.mode, opt.nhid, opt.nlayers,
                             opt.dropout_f, opt.dropout_d, opt.activation, opt.periode).to(device)
+    if opt.model == 'GRU':
+        model = SaptioTemporalNN_GRU(relations, opt.nx, opt.nt_train, opt.nd, opt.nz, opt.mode, opt.nhid, opt.nlayers,
+                            opt.dropout_f, opt.dropout_d, opt.activation, opt.periode).to(device)
     elif opt.model == 'ld':
         model = SaptioTemporalNN_largedecoder(relations, opt.nx, opt.nt_train, opt.nd, opt.nz, opt.mode, opt.nhid, opt.nlayers, opt.nhid_de, opt.nlayers_de, opt.dropout_de,
                             opt.dropout_f, opt.dropout_d, opt.activation, opt.periode).to(device)
@@ -212,7 +215,7 @@ def train(command=False):
             {'params': model.decoder.parameters()}]
     if opt.mode in ('refine', 'discover'):
         params.append({'params': model.rel_parameters(), 'weight_decay': 0.})
-
+        
     if opt.optimizer == 'Adam':
         optimizer = optim.Adam(params, lr=opt.lr, betas=(opt.beta1, opt.beta2), eps=opt.eps, weight_decay=opt.wd)
     elif opt.optimizer == 'SGD':
