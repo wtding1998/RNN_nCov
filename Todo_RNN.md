@@ -15,6 +15,8 @@
 - [x] make another dir for output
     - [x] os find the dir
 - [x] update the git in server
+- [ ] 增量一定要是正的
+
 - [ ] complete batch_size
 - [ ] weight decay
 - [ ] add normalize
