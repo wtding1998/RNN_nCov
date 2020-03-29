@@ -69,16 +69,21 @@ def get_relations(data_dir, disease_name, k, normalize_method='row'):
     relations = torch.cat(relations, dim=1)
     return relations.float()
 
-def get_rnn_dataset(data_dir, disease, nt_train, seq_len, start_time=0):
+def get_rnn_dataset(data_dir, disease, nt_train, seq_len, start_time=0, normalize='mean'):
     # get dataset
     data = get_time_data(data_dir, disease, start_time)  #(nt, nx, nd)
     # get option
     opt = DotDict()
     opt.nt, opt.nx, opt.nd = data.size()
+    opt.normalize = normalize
     opt.mean = data.mean().item()
-    opt.min = data.min().item()
-    opt.max = data.max().item()
-    data = data - opt.mean
+    if normalize == 'max_min':
+        opt.min = data.min().item()
+        opt.max = data.max().item()
+        data = (data - opt.mean) / (opt.max-opt.min)
+    elif normalize == 'variance':
+        opt.std = np.std(data)
+        data = (data - opt.mean) / opt.std
     # split train / test
     train_input = []
     train_output = []

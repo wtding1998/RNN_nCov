@@ -26,13 +26,13 @@ import numpy as np
 p = configargparse.ArgParser()
 # -- data
 p.add('--datadir', type=str, help='path to dataset', default='data')
-p.add('--dataset', type=str, help='dataset name', default='ncov')
+p.add('--dataset', type=str, help='dataset name', default='ncov_confirmed')
 p.add('--nt_train', type=int, help='time for training', default=20)
 p.add('--start_time', type=int, help='time for training', default=0)
 # -- xp
-p.add('--outputdir', type=str, help='path to save xp', default='output')
+p.add('--outputdir', type=str, help='path to save xp', default='default')
 p.add('--xp', type=str, help='xp name', default='rnn')
-p.add('--dir_auto', type=boolean_string, help='dataset_model', default=True)
+# p.add('--dir_auto', type=boolean_string, help='dataset_model', default=True)
 p.add('--xp_auto', type=boolean_string, help='time', default=False)
 p.add('--xp_time', type=boolean_string, help='xp_time', default=True)
 p.add('--auto', type=boolean_string, help='dataset_model + time', default=False)
@@ -92,16 +92,17 @@ test_data = test_data.to(device)
 for k, v in setup.items():
     opt[k] = v
 
-if opt.dir_auto:
-    opt.outputdir = opt.dataset + "_" + opt.rnn_model 
+if opt.outputdir == 'default':
+    opt.outputdir = opt.dataset + "_" + opt.rnn_model
+opt.outputdir = get_dir(opt.outputdir)
+
 if opt.xp_time:
-    opt.xp = opt.xp + "_" + get_time() + str(random.random())[-2:]
+    opt.xp = opt.xp + "_" + get_time()
 if opt.xp_auto:
-    opt.xp = get_time() + str(random.random())[-2:]
+    opt.xp = get_time()
 if opt.auto_all:
     opt.outputdir = opt.dataset + "_" + opt.rnn_model 
-    opt.xp = get_time() + str(random.random())[-2:]
-
+    opt.xp = get_time()
 
 opt.start = time_dir()
 start_st = datetime.datetime.now()
@@ -130,13 +131,12 @@ if opt.patience > 0:
 # Logs
 #######################################################################################################################
 logger = Logger(get_dir(opt.outputdir), opt.xp, opt.checkpoint_interval)
-with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
-    json.dump(opt, f, sort_keys=True, indent=4)
 #######################################################################################################################
 # Training
 #######################################################################################################################
 lr = opt.lr
 pb = trange(opt.nepoch)
+opt.mintest = 1000.0
 for e in pb:
     # ------------------------ Train ------------------------
     batches = shuffle_list(opt.nt_train - opt.seq_length, opt.batch_size)
@@ -167,6 +167,8 @@ for e in pb:
             score = rmse(pred, test_data)
             # logger.log('test_epoch.rmse', score)
             pb.set_postfix(train_loss=train_loss.item(), test_loss=score)
+            if opt.mintest > score:
+                opt.mintest = score
             # schedule lr
             if opt.patience > 0 and score < opt.sch_bound:
                 lr_scheduler.step(score)
@@ -183,9 +185,12 @@ with torch.no_grad():
     test_data = test_data.view(opt.nt - opt.nt_train, opt.nx, opt.nd)
     score = rmse(pred, test_data)
     score_ts = rmse(pred, test_data, reduce=False) # 1-dim tensor
-    pred = pred + opt.mean
-    print(pred)
-    print("test_loss : %f" % score)
+    if opt.normalize == 'max_min':
+        pred = pred * (opt.max - opt.min) + opt.mean
+        opt.true_score = score * (opt.max - opt.min)
+    if opt.normalize == 'std':
+        pred = pred * opt.std + opt.mean
+        opt.true_score = score * opt.std
     for i in range(opt.nd):
         d_pred = pred[:,:, i].cpu().numpy()
         np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred_' + str(i).zfill(3) +  '.txt'), d_pred)
@@ -199,4 +204,5 @@ opt.time = str(end_st - start_st)
 with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
     json.dump(opt, f, sort_keys=True, indent=4)
 
+logger.save(model)
 

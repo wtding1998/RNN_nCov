@@ -2,7 +2,8 @@
 
 ## ncov
 
-- [ ] 
+- [ ] print
+- [ ] a
 
 ## Code
 - [x] add GRU model
@@ -17,10 +18,9 @@
 - [x] update the git in server
 - [ ] 增量一定要是正的
 
-- [ ] complete batch_size
-- [ ] weight decay
-- [ ] add normalize
-- khop?
+- [x] complete batch_size
+- [x] weight decay
+- [x] add normalize
 
 **result** : 
 - [x] print the information for the given model | *test_time* 
