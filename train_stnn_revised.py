@@ -27,7 +27,7 @@ import torch.backends.cudnn as cudnn
 
 from get_dataset import get_stnn_data
 from utils import DotDict, Logger, rmse, boolean_string, get_dir, get_time, time_dir
-from stnn import SaptioTemporalNN, SaptioTemporalNN_largedecoder, SaptioTemporalNN_GRU, SaptioTemporalNN_LSTM
+from stnn import SaptioTemporalNN_tanh
 
 def train(command=False):
     if command == True:
@@ -198,18 +198,7 @@ def train(command=False):
     #######################################################################################################################
     # Model
     #######################################################################################################################
-    if opt.model == 'default':
-        model = SaptioTemporalNN(relations, opt.nx, opt.nt_train, opt.nd, opt.nz, opt.mode, opt.nhid, opt.nlayers,
-                            opt.dropout_f, opt.dropout_d, opt.activation, opt.periode).to(device)
-    elif opt.model == 'GRU':
-        model = SaptioTemporalNN_GRU(relations, opt.nx, opt.nt_train, opt.nd, opt.nz, opt.mode, opt.nhid, opt.nlayers,
-                            opt.dropout_f, opt.dropout_d, opt.activation, opt.periode).to(device)
-    elif opt.model == 'LSTM':
-        model = SaptioTemporalNN_LSTM(relations, opt.nx, opt.nt_train, opt.nd, opt.nz, opt.mode, opt.nhid, opt.nlayers,
-                            opt.dropout_f, opt.dropout_d, opt.activation, opt.periode).to(device)
-    elif opt.model == 'ld':
-        model = SaptioTemporalNN_largedecoder(relations, opt.nx, opt.nt_train, opt.nd, opt.nz, opt.mode, opt.nhid, opt.nlayers, opt.nhid_de, opt.nlayers_de, opt.dropout_de,
-                            opt.dropout_f, opt.dropout_d, opt.activation, opt.periode).to(device)
+    model = SaptioTemporalNN_tanh(relations, opt.nx, opt.nt_train, opt.nd, opt.nz, opt.mode, opt.nhid, opt.nlayers, opt.dropout_f, opt.dropout_d, opt.activation, opt.periode).to(device)
 
     #######################################################################################################################
     # Optimizer
@@ -246,6 +235,7 @@ def train(command=False):
     #######################################################################################################################
     lr = opt.lr
     opt.mintest = 1000.0
+    dyn_range = (opt.nt_train - 1) * opt.nx
     if command:
         pb = trange(opt.nepoch)
     else:
@@ -267,20 +257,17 @@ def train(command=False):
             x_rec = model.dec_closure(input_t, input_x)
             mse_dec = F.mse_loss(x_rec, x_target)
             # backward
-            mse_dec.backward()
+            # mse_dec.backward()
             # step
-            optimizer.step()
-            # log
             # logger.log('train_iter.mse_dec', mse_dec.item())
             logs_train['mse_dec'] += mse_dec.item() * len(batch)
-        # --- dynamic ---
-        idx_perm = torch.randperm(nex_dyn).to(device)
-        batches = idx_perm.split(opt.batch_size)
-        for i, batch in enumerate(batches):
-            optimizer.zero_grad()
-            # data
-            input_t = idx_dyn[0][batch]
-            input_x = idx_dyn[1][batch]
+
+            # dynamic
+            # drop the idex outof dynamic range
+            batch_dyn = [idx for idx in batch if idx < dyn_range]
+            input_t = idx_dyn[0][batch_dyn]
+            input_x = idx_dyn[1][batch_dyn]
+
             # closure
             z_inf = model.factors[input_t, input_x]
             z_pred = model.dyn_closure(input_t - 1, input_x)
@@ -292,8 +279,9 @@ def train(command=False):
             if opt.mode in('refine', 'discover') and opt.l1_rel > 0:
                 # rel_weights_tmp = model.rel_weights.data.clone()
                 loss_dyn += opt.l1_rel * model.get_relations().abs().mean()
+            loss_train = mse_dec + loss_dyn
             # backward
-            loss_dyn.backward()
+            loss_train.backward()
             # step
             optimizer.step()
             # clip
