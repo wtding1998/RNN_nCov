@@ -27,7 +27,7 @@ p = configargparse.ArgParser()
 # -- data
 p.add('--datadir', type=str, help='path to dataset', default='data')
 p.add('--dataset', type=str, help='dataset name', default='ncov_confirmed')
-p.add('--nt_train', type=int, help='time for training', default=20)
+p.add('--nt_train', type=int, help='time for training', default=50)
 p.add('--start_time', type=int, help='time for training', default=0)
 # -- xp
 p.add('--outputdir', type=str, help='path to save xp', default='default')
