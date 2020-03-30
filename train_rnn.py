@@ -188,7 +188,7 @@ with torch.no_grad():
     if opt.normalize == 'max_min':
         pred = pred * (opt.max - opt.min) + opt.mean
         opt.true_score = score * (opt.max - opt.min)
-    if opt.normalize == 'std':
+    if opt.normalize == 'variance':
         pred = pred * opt.std + opt.mean
         opt.true_score = score * opt.std
     for i in range(opt.nd):
