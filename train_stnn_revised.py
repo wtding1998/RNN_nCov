@@ -42,6 +42,7 @@ def train(command=False):
         p.add('--start_time', type=int, help='start time for data', default=0)
         p.add('--rescaled', type=str, help='rescaled method', default='d')
         p.add('--normalize_method', type=str, help='normalize method for relation', default='row')
+        p.add('--normalize', type=str, help='normalize method for time data (variance | min_max)', default='variance')
 
         # -- xp
         p.add('--outputdir', type=str, help='path to save xp', default='default')
@@ -176,7 +177,7 @@ def train(command=False):
     #######################################################################################################################
     # -- load data
 
-    setup, (train_data, test_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop, opt.start_time, rescaled_method=opt.rescaled, normalize_method=opt.normalize_method)
+    setup, (train_data, test_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop, opt.start_time, rescaled_method=opt.rescaled, normalize_method=opt.normalize_method, normalize=opt.normalize)
     # relations = relations[:, :, :, 0]
     train_data = train_data.to(device)
     test_data = test_data.to(device)
@@ -346,23 +347,14 @@ def train(command=False):
         score = rmse(x_pred, test_data)
     # logger.log('test.rmse', score)
     # logger.log('test.ts', {t: {'rmse': scr.item()} for t, scr in enumerate(score_ts)})
-    true_pred_data = torch.randn_like(x_pred)
-    true_test_data = torch.randn_like(test_data)
-    if opt.rescaled == 'd':
-        for i in range(opt.nd):
-            true_pred_data[:,:, i] = x_pred[:,:, i] * (opt.max[i] - opt.min[i]) + opt.mean[i]
-            true_test_data[:,:, i] = test_data[:,:, i] * (opt.max[i] - opt.min[i]) + opt.mean[i]
-    elif opt.rescaled == 'x':
-        for i in range(opt.nx):
-            true_pred_data[:, i, :] = x_pred[:, i, :] * (opt.max[i] - opt.min[i]) + opt.mean[i]
-            true_test_data[:, i, :] = test_data[:, i, :] * (opt.max[i] - opt.min[i]) + opt.mean[i]
-    true_score = rmse(true_pred_data, true_test_data)
-    # print(true_pred_data)
-    for i in range(opt.nd):
-        d_pred = x_pred[:,:, i].cpu().numpy()
-        # print(d_pred)
-        np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred_' + str(i).zfill(3) +  '.txt'), d_pred, delimiter=',')
 
+    if opt.normalize == 'variance':
+        true_pred_data = x_pred * opt.std + opt.mean
+        true_score = score * opt.std
+    elif opt.normalize_method == 'min_max':
+        true_pred_data = x_pred * (opt.max - opt.min) + opt.mean
+        true_score = score * (opt.max - opt.min)
+    # save pred data
     for i in range(opt.nd):
         d_pred =true_pred_data[:,:, i].cpu().numpy()
         # print(d_pred)
