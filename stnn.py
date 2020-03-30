@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 
-from module import MLP
+from module import MLP, MLP_tanh
 from utils import identity
 
 
@@ -134,7 +134,7 @@ from utils import identity
 #         yield self.rel_weights
 
 
-class SaptioTemporalNN_tanh(nn.Module):
+class SaptioTemporalNN(nn.Module):
     def __init__(self,
                  relations,
                  nx,
@@ -1298,7 +1298,7 @@ class SaptioTemporalNN_tanh(nn.Module):
         # modules
         self.drop = nn.Dropout(dropout_f)
         self.factors = nn.Parameter(torch.randn(nt, nx, nz))
-        self.dynamic = MLP(nz * self.nr, nhid, nz, nlayers, dropout_d)
+        self.dynamic = MLP_tanh(nz * self.nr, nhid, nz, nlayers, dropout_d)
         self.decoder = nn.Linear(nz, nd, bias=False)
         if mode == 'refine':
             self.relations.data = self.relations.data.ceil().clamp(0, 1).byte()
