@@ -82,7 +82,7 @@ def get_rnn_dataset(data_dir, disease, nt_train, seq_len, start_time=0, normaliz
         opt.max = data.max().item()
         data = (data - opt.mean) / (opt.max-opt.min)
     elif normalize == 'variance':
-        opt.std = np.std(data)
+        opt.std = torch.std(data).item()
         data = (data - opt.mean) / opt.std
     # split train / test
     train_input = []
