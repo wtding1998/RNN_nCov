@@ -1472,7 +1472,7 @@ class SaptioTemporalNN_input(nn.Module):
         input : (nt, nx, nd)
         state_next : (nt, nx, nz)
         '''
-        state_input = self.input_gate(input_data.view(-1, self.nx*self.nz))
+        state_input = self.input_gate(input_data.view(-1, self.nx*self.nd))
         rels = self.get_relations()
         state_rels = []
         for r in range(self.nr):
