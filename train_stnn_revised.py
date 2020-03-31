@@ -310,7 +310,7 @@ def train(command=False):
                 x_pred, _ = model.generate(opt.nt - opt.nt_train)
                 score = rmse(x_pred, test_data)
             if command:
-                pb.set_postfix(loss=logs_train['loss'], test=score)
+                pb.set_postfix(loss=loss_train.item(), test=score)
             else:
                 print(e, 'loss=', logs_train['loss'], 'test=', score)
             logger.log('test_epoch.rmse', score)
@@ -324,7 +324,7 @@ def train(command=False):
                 break
         else:
             if command:
-                pb.set_postfix(loss=logs_train['loss'])
+                pb.set_postfix(loss=loss_train.item())
             else:
                 print(e, 'loss=', logs_train['loss'])
     # ------------------------ Test ------------------------

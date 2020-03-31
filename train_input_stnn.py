@@ -150,7 +150,7 @@ def train(command=False):
         opt.outputdir = opt.dataset + "_" + opt.mode 
         opt.xp = get_time()
     opt.mode = opt.mode if opt.mode in ('refine', 'discover') else None
-
+    opt.xp = 'input-' + opt.xp
     opt.start = time_dir()
     start_st = datetime.datetime.now()
     opt.st = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
@@ -255,7 +255,7 @@ def train(command=False):
             mse_dyn = z_pred.sub(z_inf).pow(2).mean()
             loss_dyn = mse_dyn * opt.lambd
             if opt.l2_z > 0:
-                loss_dyn += opt.l2_z * model.factors[input_t_dyn - 1].sub(model.factors[input_t_dyn]).pow(2).mean()
+                loss_dyn += opt.l2_z * model.factors[input_t_dyn].pow(2).mean()
             if opt.mode in('refine', 'discover') and opt.l1_rel > 0:
                 # rel_weights_tmp = model.rel_weights.data.clone()
                 loss_dyn += opt.l1_rel * model.get_relations().abs().mean()
