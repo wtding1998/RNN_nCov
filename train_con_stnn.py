@@ -39,6 +39,7 @@ def train(command=False):
         p.add('--datadir', type=str, help='path to dataset', default='data')
         p.add('--dataset', type=str, help='dataset name', default='ncov_confirmed')
         p.add('--nt_train', type=int, help='time for training', default=50)
+        p.add('--validation_ratio', type=float, help='validation/train', default=0.1)
         p.add('--start_time', type=int, help='start time for data', default=0)
         p.add('--rescaled', type=str, help='rescaled method', default='d')
         p.add('--normalize_method', type=str, help='normalize method for relation', default='row')
@@ -150,7 +151,7 @@ def train(command=False):
         opt.outputdir = opt.dataset + "_" + opt.mode 
         opt.xp = get_time()
     opt.mode = opt.mode if opt.mode in ('refine', 'discover') else None
-    opt.xp = 'input-' + opt.xp
+    opt.xp = 'concat-' + opt.xp
     opt.start = time_dir()
     start_st = datetime.datetime.now()
     opt.st = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
@@ -173,7 +174,7 @@ def train(command=False):
     #######################################################################################################################
     # -- load data
 
-    setup, (train_data, test_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop, opt.start_time, rescaled_method=opt.rescaled, normalize_method=opt.normalize_method)
+    setup, (train_data, test_data, validation_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop, opt.start_time, rescaled_method=opt.rescaled, normalize_method=opt.normalize_method)
     # relations = relations[:, :, :, 0]
     train_data = train_data.to(device)
     test_data = test_data.to(device)
@@ -283,8 +284,8 @@ def train(command=False):
         if opt.test:
             model.eval()
             with torch.no_grad():
-                x_pred, _ = model.generate(opt.nt - opt.nt_train)
-                score = rmse(x_pred, test_data)
+                x_pred, _ = model.generate(opt.validation_length)
+                score = rmse(x_pred, validation_data)
             if command:
                 pb.set_postfix(loss=logs_train['loss'], test=score)
             else:
