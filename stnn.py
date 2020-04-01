@@ -1405,7 +1405,10 @@ class SaptioTemporalNN_input(nn.Module):
         self.nd = nd
         self.mode = mode
         # kernel
-        self.activation = torch.tanh if activation == 'tanh' else identity if activation == 'identity' else None
+        if activation  == 'tanh':
+            self.activation = torch.tanh
+        elif activation == 'relu':
+            self.activation = torch.relu
         device = relations.device
         if mode is None or mode == 'refine':
             self.relations = torch.cat(
