@@ -187,10 +187,10 @@ with torch.no_grad():
     score_ts = rmse(pred, test_data, reduce=False) # 1-dim tensor
     if opt.normalize == 'max_min':
         pred = pred * (opt.max - opt.min) + opt.mean
-        opt.true_score = score * (opt.max - opt.min)
+        opt.true_loss = score * (opt.max - opt.min)
     if opt.normalize == 'variance':
         pred = pred * opt.std + opt.mean
-        opt.true_score = score * opt.std
+        opt.true_loss = score * opt.std
     for i in range(opt.nd):
         d_pred = pred[:,:, i].cpu().numpy()
         np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred_' + str(i).zfill(3) +  '.txt'), d_pred)
