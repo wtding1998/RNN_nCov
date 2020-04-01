@@ -54,7 +54,7 @@ def train(command=False):
         p.add('--model', type=str, help='STNN Model', default='default')
         p.add('--mode', type=str, help='STNN mode (default|refine|discover)', default='default')
         p.add('--nz', type=int, help='laten factors size', default=1)
-        p.add('--activation', type=str, help='dynamic module activation function (identity|tanh)', default='tanh')
+        p.add('--activation', type=str, help='dynamic module activation function (relu|tanh)', default='tanh')
         p.add('--khop', type=int, help='spatial depedencies order', default=1)
         p.add('--nhid', type=int, help='dynamic function hidden size', default=0)
         p.add('--nlayers', type=int, help='dynamic function num layers', default=1)

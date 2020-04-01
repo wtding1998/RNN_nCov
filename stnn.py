@@ -1421,9 +1421,14 @@ class SaptioTemporalNN_input(nn.Module):
         self.input_data = x_input
         if x_input.size() != (nt, nx, nd):
             print('input size not match')
-        self.dynamic = MLP_tanh(nz * nx * (self.nr + 1), nhid, nz * nx, nlayers, dropout_d)
-        self.decoder = MLP_tanh(nz * nx, nhid, nd * nx, nlayers, dropout_d)
-        self.input_gate = MLP_tanh(nx * nd, nhid, nx * nz, nlayers, dropout_d)
+        if activation == 'tanh':
+            self.dynamic = MLP_tanh(nz * nx * (self.nr + 1), nhid, nz * nx, nlayers, dropout_d)
+            self.decoder = MLP_tanh(nz * nx, nhid, nd * nx, nlayers, dropout_d)
+            self.input_gate = MLP_tanh(nx * nd, nhid, nx * nz, nlayers, dropout_d)
+        else:
+            self.dynamic = MLP(nz * nx * (self.nr + 1), nhid, nz * nx, nlayers, dropout_d)
+            self.decoder = MLP(nz * nx, nhid, nd * nx, nlayers, dropout_d)
+            self.input_gate = MLP(nx * nd, nhid, nx * nz, nlayers, dropout_d)
         if mode == 'refine':
             self.relations.data = self.relations.data.ceil().clamp(0, 1).byte()
             self.rel_weights = nn.Parameter(
