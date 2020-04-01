@@ -27,7 +27,7 @@ import torch.backends.cudnn as cudnn
 
 from get_dataset import get_stnn_data
 from utils import DotDict, Logger, rmse, boolean_string, get_dir, get_time, time_dir
-from stnn import SaptioTemporalNN, SaptioTemporalNN_largedecoder, SaptioTemporalNN_GRU, SaptioTemporalNN_LSTM
+from stnn import SaptioTemporalNN, SaptioTemporalNN_largedecoder, SaptioTemporalNN_GRU, SaptioTemporalNN_LSTM, SaptioTemporalNN_tanh
 
 def train(command=False):
     if command == True:
@@ -348,20 +348,14 @@ def train(command=False):
     # logger.log('test.ts', {t: {'rmse': scr.item()} for t, scr in enumerate(score_ts)})
     true_pred_data = torch.randn_like(x_pred)
     true_test_data = torch.randn_like(test_data)
-    if opt.rescaled == 'd':
-        for i in range(opt.nd):
-            true_pred_data[:,:, i] = x_pred[:,:, i] * (opt.max[i] - opt.min[i]) + opt.mean[i]
-            true_test_data[:,:, i] = test_data[:,:, i] * (opt.max[i] - opt.min[i]) + opt.mean[i]
-    elif opt.rescaled == 'x':
-        for i in range(opt.nx):
-            true_pred_data[:, i, :] = x_pred[:, i, :] * (opt.max[i] - opt.min[i]) + opt.mean[i]
-            true_test_data[:, i, :] = test_data[:, i, :] * (opt.max[i] - opt.min[i]) + opt.mean[i]
+    if opt.normalize == 'variance':
+        true_pred_data = x_pred * opt.std + opt.mean
+        true_test_data = test_data * opt.std + opt.mean
+    if opt.normalize == 'min_max':
+        true_pred_data = x_pred * (opt.max - opt.min) + opt.mean
+        true_test_data = test_data * (opt.max - opt.min) + opt.mean
     true_score = rmse(true_pred_data, true_test_data)
     # print(true_pred_data)
-    for i in range(opt.nd):
-        d_pred = x_pred[:,:, i].cpu().numpy()
-        # print(d_pred)
-        np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred_' + str(i).zfill(3) +  '.txt'), d_pred, delimiter=',')
 
     for i in range(opt.nd):
         d_pred =true_pred_data[:,:, i].cpu().numpy()
