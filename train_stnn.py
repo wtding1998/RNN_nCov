@@ -42,7 +42,7 @@ def train(command=False):
         p.add('--validation_ratio', type=float, help='validation/train', default=0.1)
         p.add('--start_time', type=int, help='start time for data', default=0)
         p.add('--rescaled', type=str, help='rescaled method', default='d')
-        p.add('--normalize_method', type=str, help='normalize method for relation', default='row')
+        p.add('--normalize_method', type=str, help='normalize method for relation', default='all')
 
         # -- xp
         p.add('--outputdir', type=str, help='path to save xp', default='default')
@@ -75,7 +75,7 @@ def train(command=False):
         p.add('--wd_z', type=float, help='weight decay on latent factors', default=1e-7)
         p.add('--l2_z', type=float, help='l2 between consecutives latent factors', default=0.)
         p.add('--l1_rel', type=float, help='l1 regularization on relation discovery mode', default=0.)
-        p.add('--sch_bound', type=float, help='learning rate', default=0.017)
+        p.add('--sch_bound', type=float, help='learning rate', default=0.001)
         # -- learning
         p.add('--batch_size', type=int, default=1131, help='batch size')
         p.add('--patience', type=int, default=150, help='number of epoch to wait before trigerring lr decay')
