@@ -10,7 +10,7 @@ from keras.optimizers import SGD, RMSprop, adam
 
 np.random.seed(2017)
 
-def split_data(dataset='ncov',sequence_length=2,ratio=1.0):
+def split_data(dataset='ncov',sequence_length=2,nt_train=55):
 
     raw_data = np.array(get_time_data('data', dataset)) 
     opt = DotDict()
@@ -22,13 +22,11 @@ def split_data(dataset='ncov',sequence_length=2,ratio=1.0):
     result = []
     for index in range(len(raw_data) - sequence_length + 1):
         result.append(raw_data[index: index + sequence_length])
-    result = np.array(result) 
+    result = np.array(result)
     result_mean = result.mean()
     result -= result_mean
-    print("Shift: ", result_mean)
-    print ("Data: ", result.shape)
-    # nt_train = int(round(0.95 * result.shape[0]))
-    nt_train = result.shape[0] - 1
+    result_std = result.std()
+    result = result / result_std
     train = result[:nt_train]
     np.random.shuffle(train)
     X_train = train[:, :-1]
@@ -69,20 +67,21 @@ def build_model(opt):
 
 def run_network(model=None, data=None, dataset='ncov_confirmed'):
     global_start_time = time.time()
-    epochs = 100000
-    ratio = 1
+    epochs = 10
+    nt_train = 50
     sequence_length = 2
     # dataset = 'ncov_confirmed'
 
     if data is None:
         print ('Loading data... ')
         opt, (X_train, y_train, X_test, y_test, result_mean) = split_data(
-            dataset, sequence_length, ratio)
+            dataset, sequence_length, nt_train)
     else:
         X_train, y_train, X_test, y_test = data
 
     print ('\nData Loaded. Compiling...\n')
-
+    print(X_train.shape) # (50, 1, 31)
+    print(y_train.shape) # (50, 31)
     # model = None
     if model is None:
         model = build_model(opt)

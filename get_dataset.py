@@ -169,9 +169,49 @@ def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0, rescaled_
     validation_data = test_data[:opt.validation_length]
     return opt, (train_data, test_data, validation_data), relations
 
+def get_keras_dataset(data_dir, disease_name, nt_train, seq_len, start_time=0, normalize='variance'):
+    # get dataset
+        # data_dir = 'data', disease_name = 'ncov_confirmed' 
+    # return (nt, nx, nd) time series data
+    time_data_dir = os.path.join(data_dir, disease_name, 'time_data')
+    time_datas = os.listdir(time_data_dir)
+    data = []
+    for time_data in time_datas:
+        data_path = os.path.join(time_data_dir, time_data)
+        new_data = np.genfromtxt(data_path, encoding='utf-8', delimiter=',')[start_time:][..., np.newaxis]
+        data.append(new_data)
+    data = np.concatenate(data, axis=2).astype(np.float64)
+    # get option
+    opt = DotDict()
+    opt.nt, opt.nx, opt.nd = data.shape
+    opt.normalize = normalize
+    train_data = data[:nt_train]
+    opt.mean = np.mean(train_data)
+    if normalize == 'max_min':
+        opt.min = np.min(train_data)
+        opt.max = np.max(train_data)
+        data = (data - opt.mean) / (opt.max-opt.min)
+    elif normalize == 'variance':
+        opt.std = np.std(train_data) * np.sqrt(train_data.size) / np.sqrt(train_data.size-1)
+        data = (data - opt.mean) / opt.std
+    # split train / test
+    data = np.reshape(data, (opt.nt, opt.nx*opt.nd))
+    train_data = data[:nt_train]
+    train_input = [] # (batch, squence_length, opt.nx*opt.nd)
+    train_output = [] # (batch, opt.nx*opt.nd)
+    for i in range(nt_train - seq_len):
+        new_input = []
+        train_input.append(train_data[i:i+seq_len][np.newaxis, ...])
+        train_output.append(train_data[i+seq_len][np.newaxis, ...])
+    train_input = np.concatenate(train_input, axis=0)
+    train_output = np.concatenate(train_output, axis=0)
+    test_data = data[nt_train:]
+    test_input = data[nt_train - seq_len:nt_train]
+    return opt, (train_input, train_output, test_input, test_data)
 
 if __name__ == "__main__":
-    print(get_time_data('data', 'ncov', 0).size())
+    # print(get_time_data('data', 'ncov', 0).size())
+    print(get_keras_dataset('data', 'ncov_confirmed', 50, 2, start_time=3)[1].shape)
     # result
     # torch.Size([7, 3, 34, 3])
     # torch.Size([7, 34, 3])
