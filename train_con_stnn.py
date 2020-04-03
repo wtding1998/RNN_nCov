@@ -63,7 +63,7 @@ def train(command=False):
         p.add('--nlayers_de', type=int, help='dynamic function num layers', default=1)
         p.add('--dropout_f', type=float, help='latent factors dropout', default=.5)
         p.add('--dropout_d', type=float, help='dynamic function dropout', default=.5)
-        p.add('--dropout_de', type=float, help='dynamic function dropout', default=.5)
+        p.add('--simple_dec', type=boolean_string, help='use Linear in decoder', default=False)
         p.add('--lambd', type=float, help='lambda between reconstruction and dynamic losses', default=.1)
         # -- optim
         p.add('--lr', type=float, help='learning rate', default=3e-3)
@@ -189,7 +189,7 @@ def train(command=False):
     # Model
     #######################################################################################################################
     model = SaptioTemporalNN_concat(relations, train_data, opt.nx, opt.nt_train, opt.nd, opt.nz, opt.mode, opt.nhid, opt.nlayers,
-                        opt.dropout_f, opt.dropout_d, opt.activation, opt.periode).to(device)
+                        opt.dropout_f, opt.dropout_d, opt.activation, opt.periode, opt.simple_dec).to(device)
     #######################################################################################################################
     # Optimizer
     #######################################################################################################################

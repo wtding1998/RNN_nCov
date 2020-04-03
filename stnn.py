@@ -1395,7 +1395,8 @@ class SaptioTemporalNN_input(nn.Module):
                  dropout_f=0.,
                  dropout_d=0.,
                  activation='tanh',
-                 periode=1):
+                 periode=1,
+                 simple_dec=False):
         super(SaptioTemporalNN_input, self).__init__()
         assert (nhid > 0 and nlayers > 1) or (nhid == 0 and nlayers == 1)
         # attributes
@@ -1426,11 +1427,17 @@ class SaptioTemporalNN_input(nn.Module):
             print('input size not match')
         if activation == 'tanh':
             self.dynamic = MLP_tanh(nz * nx * (self.nr + 1), nhid, nz * nx, nlayers, dropout_d)
-            self.decoder = MLP_tanh(nz * nx, nhid, nd * nx, nlayers, dropout_d)
+            if simple_dec:
+                self.decoder = nn.Linear(nz*nx, nd*nx)
+            else:
+                self.decoder = MLP_tanh(nz * nx, nhid, nd * nx, nlayers, dropout_d)
             self.input_gate = MLP_tanh(nx * nd, nhid, nx * nz, nlayers, dropout_d)
         else:
             self.dynamic = MLP(nz * nx * (self.nr + 1), nhid, nz * nx, nlayers, dropout_d)
-            self.decoder = MLP(nz * nx, nhid, nd * nx, nlayers, dropout_d)
+            if simple_dec:
+                self.decoder = nn.Linear(nz*nx, nd*nx)
+            else:
+                self.decoder = MLP(nz * nx, nhid, nd * nx, nlayers, dropout_d)
             self.input_gate = MLP(nx * nd, nhid, nx * nz, nlayers, dropout_d)
         if mode == 'refine':
             self.relations.data = self.relations.data.ceil().clamp(0, 1).byte()
@@ -1503,13 +1510,13 @@ class SaptioTemporalNN_input(nn.Module):
         '''
         t_idx : [t1, t2, ...]
         '''
-        return self.decode_state(self.factors[t_idx])
+        return self.decode_state(self.drop(self.factors[t_idx]))
 
     def dyn_closure(self, t_idx):
         '''
         t_idx : [t1, t2, ...]
         '''
-        return self.update_state(self.factors[t_idx], self.input_data[t_idx])
+        return self.update_state(self.drop(self.factors[t_idx]), self.input_data[t_idx])
 
     def generate(self, nsteps):
         '''
@@ -1550,7 +1557,8 @@ class SaptioTemporalNN_concat(nn.Module):
                  dropout_f=0.,
                  dropout_d=0.,
                  activation='tanh',
-                 periode=1):
+                 periode=1,
+                 simple_dec=False):
         super(SaptioTemporalNN_concat, self).__init__()
         assert (nhid > 0 and nlayers > 1) or (nhid == 0 and nlayers == 1)
         # attributes
@@ -1581,12 +1589,16 @@ class SaptioTemporalNN_concat(nn.Module):
             print('input size not match')
         if activation == 'tanh':
             self.dynamic = MLP_tanh(nz * nx * self.nr, nhid, nz * nx, nlayers, dropout_d)
-            self.decoder = MLP_tanh(nz * nx, nhid, nd * nx, nlayers, dropout_d)
-            self.input_gate = MLP_tanh(nx * nd, nhid, nx * nz, nlayers, dropout_d)
+            if simple_dec:
+                self.decoder = nn.Linear(nz * nx, nd * nx)
+            else:
+                self.decoder = MLP_tanh(nz * nx, nhid, nd * nx, nlayers, dropout_d)
         else:
             self.dynamic = MLP(nz * nx * self.nr, nhid, nz * nx, nlayers, dropout_d)
-            self.decoder = MLP(nz * nx, nhid, nd * nx, nlayers, dropout_d)
-            self.input_gate = MLP(nx * nd, nhid, nx * nz, nlayers, dropout_d)
+            if simple_dec:
+                self.decoder = nn.Linear(nz * nx, nd * nx)
+            else:
+                self.decoder = MLP(nz * nx, nhid, nd * nx, nlayers, dropout_d)
         if mode == 'refine':
             self.relations.data = self.relations.data.ceil().clamp(0, 1).byte()
             self.rel_weights = nn.Parameter(
@@ -1655,13 +1667,13 @@ class SaptioTemporalNN_concat(nn.Module):
         '''
         t_idx : [t1, t2, ...]
         '''
-        return self.decode_state(self.factors[t_idx])
+        return self.decode_state(self.drop(self.factors[t_idx]))
 
     def dyn_closure(self, t_idx):
         '''
         t_idx : [t1, t2, ...]
         '''
-        return self.update_state(self.factors[t_idx])
+        return self.update_state(self.drop(self.factors[t_idx]))
 
     def generate(self, nsteps):
         '''
