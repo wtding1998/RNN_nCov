@@ -8,6 +8,7 @@ test.ipynb
 __pycache__/
 .ipynb_checkpoints/
 .mypy_cache/
+.vscode/
 data/test
 data/bike
 data/smallbike
