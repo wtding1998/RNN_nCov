@@ -272,7 +272,7 @@ def train(command=False):
             optimizer.step()
             # log
             # logger.log('train_iter.mse_dec', mse_dec.item())
-            # logs_train['mse_dec'] += mse_dec.item() * len(batch)
+            logs_train['mse_dec'] += mse_dec.item() * len(batch)
         # --- dynamic ---
         idx_perm = torch.randperm(nex_dyn).to(device)
         batches = idx_perm.split(opt.batch_size)
@@ -302,14 +302,15 @@ def train(command=False):
             #     model.rel_weights.data.masked_fill_(sign_changed, 0)
             # log
             # logger.log('train_iter.mse_dyn', mse_dyn.item())
-            # logs_train['mse_dyn'] += mse_dyn.item() * len(batch)
-            # logs_train['loss_dyn'] += loss_dyn.item() * len(batch)
+            logs_train['mse_dyn'] += mse_dyn.item() * len(batch)
+            logs_train['loss_dyn'] += loss_dyn.item() * len(batch)
+
 
         # --- logs ---
         # TODO:
-        # logs_train['mse_dec'] /= nex_dec
-        # logs_train['mse_dyn'] /= nex_dyn
-        # logs_train['loss_dyn'] /= nex_dyn
+        logs_train['mse_dec'] /= nex_dec
+        logs_train['mse_dyn'] /= nex_dyn
+        logs_train['loss_dyn'] /= nex_dyn
         logs_train['loss'] = logs_train['mse_dec'] + logs_train['loss_dyn']
         logger.log('train_epoch', logs_train)
         # checkpoint
