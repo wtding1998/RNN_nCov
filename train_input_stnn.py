@@ -218,8 +218,6 @@ def train(command=False):
     logger = Logger(opt.outputdir, opt.xp, opt.checkpoint_interval)
     # with open(os.path.join(opt.outputdir, opt.xp, 'config.json'), 'w') as f:
     #     json.dump(opt, f, sort_keys=True, indent=4)
-
-
     #######################################################################################################################
     # Training
     #######################################################################################################################
@@ -244,6 +242,7 @@ def train(command=False):
             # closure
             x_rec = model.dec_closure(input_t)
             mse_dec = F.mse_loss(x_rec, x_target)
+            logs_train['mse_dec'] += mse_dec.item() * len(batch)
             # logger.log('train_iter.mse_dec', mse_dec.item())
             # logs_train['mse_dec'] += mse_dec.item() * len(batch)
         # --- dynamic ---
@@ -271,11 +270,11 @@ def train(command=False):
             #     model.rel_weights.data.masked_fill_(sign_changed, 0)
             # log
             # logger.log('train_iter.mse_dyn', mse_dyn.item())
-            logs_train['mse_dyn'] += mse_dyn.item() * len(batch)
-            logs_train['loss_dyn'] += loss_dyn.item() * len(batch)
+            logs_train['mse_dyn'] += mse_dyn.item() * len(input_t_dyn)
+            logs_train['loss_dyn'] += loss_dyn.item() * len(input_t_dyn)
 
         # --- logs ---
-        logs_train['loss'] = logs_train['mse_dec'] + logs_train['loss_dyn']
+        logs_train['train_loss'] = logs_train['mse_dec'] + logs_train['loss_dyn']
         logger.log('train_epoch', logs_train)
         # checkpoint
         # logger.log('train_epoch.lr', lr)

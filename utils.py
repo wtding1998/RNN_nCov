@@ -85,11 +85,11 @@ def get_dir(outputdir):
     return os.path.abspath(os.path.join(os.getcwd(), "..", "output", outputdir))
 
 def get_time():
-    return datetime.datetime.now().strftime('%H-%M-%d-%m-%S')
+    return datetime.datetime.now().strftime('%m-%d-%H-%M-%S')
 
 def time_dir():
     di = {}
-    time_list = datetime.datetime.now().strftime('%H-%M-%d-%m-%S').split('-')
+    time_list = datetime.datetime.now().strftime('%m-%d-%H-%M-%S').split('-')
     di['hour'] = time_list[0]
     di['minute'] = time_list[1]
     di['day'] = time_list[2]

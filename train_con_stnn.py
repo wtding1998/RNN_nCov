@@ -245,7 +245,7 @@ def train(command=False):
             x_rec = model.dec_closure(input_t)
             mse_dec = F.mse_loss(x_rec, x_target)
             # logger.log('train_iter.mse_dec', mse_dec.item())
-            # logs_train['mse_dec'] += mse_dec.item() * len(batch)
+            logs_train['mse_dec'] += mse_dec.item() * len(batch)
         # --- dynamic ---
             # data
             input_t_dyn = torch.tensor([t for t in input_t if t < opt.nt_train])

@@ -9,6 +9,9 @@
 
 
 ## Code
+- [x] fix the error in los's log in input and cancat STNN
+- [ ] use other model to predict total amount and predict every space point with stnn
+- [ ] change rmse loss with more F.mse_loss
 - [x] add GRU model
     - [x] add GRU model in rnn_model.py
     - [x] add option in train_rnn.py

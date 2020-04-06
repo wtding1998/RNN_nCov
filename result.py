@@ -63,9 +63,7 @@ def get_df(folder, col=['test_loss', 'train_loss', 'true_loss', 'nhid', 'nlayers
 class Exp():
     def __init__(self, exp_name, path):
         self.path = path
-        print(self.path)
         self.exp_name = exp_name
-        print(self.exp_name)
         self.config = get_config(os.path.join(self.path, self.exp_name))
 
     def model_name(self):
@@ -111,11 +109,17 @@ class Exp():
         pa = os.path.join(self.path, self.exp_name)
         files = os.listdir(pa)
         for file_name in files:
-            print(file_name)
             if '.txt' in file_name:
                 pred = torch.tensor(np.genfromtxt(os.path.join(self.path, self.exp_name, file_name), delimiter=','))
         if len(pred.size()) == 1:
             pred = pred.unsqueeze(0)
+        if pred.size(0) == 1:
+            for file_name in files:
+                if '.txt' in file_name:
+                    pred = torch.tensor(np.genfromtxt(os.path.join(self.path, self.exp_name, file_name)))
+                if len(pred.size()) == 1:
+                    pred = pred.unsqueeze(0)
+
         return torch.tensor(pred)
           
 class Printer():
