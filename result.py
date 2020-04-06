@@ -2,15 +2,12 @@ import os
 import torch
 import json
 import pandas
-import numpy 
+import numpy as np
 import matplotlib.pyplot as plt
 from rnn_model import *
 from utils import normalize, DotDict, Logger, rmse, rmse_tensor, boolean_string, get_dir, get_time, next_dir, get_model, model_dir
 from stnn import SaptioTemporalNN
 
-def test_reload():
-    print('4')
-    return 0
 
 def get_config(model_dir):
     # get config
@@ -105,22 +102,29 @@ class Exp():
         model.load_state_dict(torch.load(os.path.join(self.path, self.exp_name, 'model.pt')))
         return model
     
-    def pred(self, test_input=None, time=0):
+    def pred(self, test_input=None, pred_reduce=False):
+        '''
+        return pred with (nt, nx)
+        if pred_reduce == True, return (nt)
+        '''
         pa = os.path.join(self.path, self.exp_name)
         files = os.listdir(pa)
         for file_name in files:
             if '.txt' in file_name:
-                pred = torch.tensor(np.genfromtxt(os.path.join(self.path, self.exp_name, file_name), delimiter=','))
-        if len(pred.size()) == 1:
+                pred = np.genfromtxt(os.path.join(self.path, self.exp_name, file_name), delimiter=',')
+        if len(pred.shape) == 1:
             pred = pred.unsqueeze(0)
-        if pred.size(0) == 1:
+        if pred.shape[0] == 1:
             for file_name in files:
                 if '.txt' in file_name:
-                    pred = torch.tensor(np.genfromtxt(os.path.join(self.path, self.exp_name, file_name)))
+                    pred = np.genfromtxt(os.path.join(self.path, self.exp_name, file_name))
                 if len(pred.size()) == 1:
-                    pred = pred.unsqueeze(0)
+                    pred = pred[np.newaxis, ...]
+        pred = pred.T
+        if pred_reduce:
+            pred = np.sum(pred, axis=0)
+        return pred
 
-        return torch.tensor(pred)
           
 class Printer():
     def __init__(self, folder):
