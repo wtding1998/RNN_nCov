@@ -101,7 +101,7 @@ elif opt.rnn_model == 'GRU':
             opt.nhid,
             input_shape=(None, opt.nx*opt.nd),
             return_sequences=True))
-
+model.add(Dense(opt.nx*opt.nd, activation='tanh'))
 model.add(Dropout(opt.dropout))
 # middle layers
 for i in range(opt.nlayers-2):
@@ -113,6 +113,7 @@ for i in range(opt.nlayers-2):
         model.add(GRU(
             opt.nhid,
             return_sequences=True))
+    model.add(Dense(opt.nx*opt.nd, activation='tanh'))
     model.add(Dropout(opt.dropout))
 
 # final layer
@@ -166,7 +167,7 @@ if opt.normalize == 'variance':
     opt.true_loss = score * opt.std
 opt.test_loss = score
 train_loss_history = model_history.history['loss']
-logger.log('train_loss', train_loss_history)
+logger.log('train_loss.epoch', train_loss_history)
 opt.train_loss = train_loss_history[-1]
 opt.end = time_dir()
 end_st = datetime.datetime.now()
