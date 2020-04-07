@@ -47,12 +47,15 @@ def get_multi_relations(data_dir, disease_name, k, start_time=0):
     relations = torch.cat(relations, dim=1)
     return relations.float()[:, :, :, start_time:]
 
-def get_relations(data_dir, disease_name, k, normalize_method='all'):
+def get_relations(data_dir, disease_name, k, normalize_method='all', relations_names='all'):
     '''
     (nx, nrelations, nx)
     '''
     relations_dir = os.path.join(data_dir, disease_name, 'overall_relations')
-    relations_names = os.listdir(relations_dir)
+    if not isinstance(relations_names, list):
+        relations_names = os.listdir(relations_dir)
+    else:
+        relations_names = [relations_name+'.csv' for relations_name in relations_names]
     relations = []
     for relation_name in relations_names:
         relation_path = os.path.join(relations_dir, relation_name)
@@ -117,7 +120,7 @@ def get_multi_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0):
     test_data = data[nt_train:]
     return opt, (train_data, test_data), relations
 
-def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0, rescaled_method='d', normalize_method='all', normalize='variance', validation_ratio=0.1):
+def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0, rescaled_method='d', normalize_method='all', normalize='variance', validation_ratio=0.1, relations_names='all'):
     # get dataset
     data = get_time_data(data_dir, disease_name, start_time)
     opt = DotDict()
@@ -125,7 +128,7 @@ def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0, rescaled_
     opt.normalize = normalize
     opt.rescaled = rescaled_method
     opt.periode = opt.nt
-    relations = get_relations(data_dir, disease_name, k, normalize_method=normalize_method)
+    relations = get_relations(data_dir, disease_name, k, normalize_method=normalize_method, relations_names=relations_names)
     train_data = data[:nt_train]
     # print(train_data.shape)
     # # new_data = data.detach()

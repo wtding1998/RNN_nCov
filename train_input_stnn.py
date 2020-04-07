@@ -43,6 +43,7 @@ def train(command=False):
         p.add('--start_time', type=int, help='start time for data', default=0)
         p.add('--rescaled', type=str, help='rescaled method', default='d')
         p.add('--normalize_method', type=str, help='normalize method for relation', default='all')
+        p.add('--relations', type=str, nargs='+', help='choose relations', default='all')
 
         # -- xp
         p.add('--outputdir', type=str, help='path to save xp', default='default')
@@ -174,7 +175,7 @@ def train(command=False):
     #######################################################################################################################
     # -- load data
 
-    setup, (train_data, test_data, validation_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop, opt.start_time, rescaled_method=opt.rescaled, normalize_method=opt.normalize_method)
+    setup, (train_data, test_data, validation_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop, opt.start_time, rescaled_method=opt.rescaled, normalize_method=opt.normalize_method, relations_names=opt.relations)
     # relations = relations[:, :, :, 0]
     train_data = train_data.to(device)
     test_data = test_data.to(device)
@@ -286,9 +287,9 @@ def train(command=False):
                 x_pred, _ = model.generate(opt.validation_length)
                 score = rmse(x_pred, validation_data)
             if command:
-                pb.set_postfix(loss=logs_train['loss'], test=score)
+                pb.set_postfix(loss=logs_train['train_loss'], test=score)
             else:
-                print(e, 'loss=', logs_train['loss'], 'test=', score)
+                print(e, 'loss=', logs_train['train_loss'], 'test=', score)
             logger.log('test_epoch.rmse', score)
             if opt.mintest > score:
                 opt.mintest = score
@@ -300,9 +301,9 @@ def train(command=False):
                 break
         else:
             if command:
-                pb.set_postfix(loss=logs_train['loss'])
+                pb.set_postfix(loss=logs_train['train_loss'])
             else:
-                print(e, 'loss=', logs_train['loss'])
+                print(e, 'loss=', logs_train['train_loss'])
     # ------------------------ Test ------------------------
     model.eval()
     with torch.no_grad():
