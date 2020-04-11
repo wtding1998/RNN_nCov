@@ -51,3 +51,18 @@ STNN will weak in some epochs
 1. maybe watch the parameters in every model may be 0
 1. maybe add test set can improve the peformance
 
+## 2020 - 04 - 08
+
+09 : 39
+
+
+**Task :**
+
+---
+
+**Diary :**
+- 念起即断，念起不随，念起即觉，觉之既无
+
+王维克问了别人，说你说的是对流扩散方程，但是哪个是项是对流，哪个是扩散。我觉得这种对pde的感觉很重要，因为这样子可以了解方程的解的大致状况。
+
+如果脑袋里没有例子，这个数学是很危险的数学。

@@ -16,3 +16,4 @@ data/smallbike
 blog.py
 keras_model.h5
 pred.txt
+test_dropout.py
