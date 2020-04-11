@@ -276,6 +276,9 @@ def train(command=False):
             logs_train['loss_dyn'] += loss_dyn.item() * len(batch)
 
         # --- logs ---
+        logs_train['mse_dec'] /= opt.nt_train
+        logs_train['mse_dyn'] /= (opt.nt_train - 1)
+        logs_train['loss_dyn'] /= (opt.nt_train - 1)
         logs_train['loss'] = logs_train['mse_dec'] + logs_train['loss_dyn']
         logger.log('train_epoch', logs_train)
         # checkpoint
