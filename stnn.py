@@ -1809,7 +1809,7 @@ class SaptioTemporalNN_input_simple(nn.Module):
     def dyn_closure(self, t_idx, x_idx):
         rels = self.get_relations()
         z_input = self.drop(self.factors[t_idx])
-        x_into_state = self.input_data[t_idx, x_idx].view(-1, self.nz)
+        x_into_state = self.input_gate(self.input_data[t_idx, x_idx]).view(-1, self.nz)
         z_context = rels[x_idx].matmul(z_input).view(-1,
                                                      self.nr*self.nz)
         z_gen = self.dynamic(torch.cat([z_context, x_into_state], dim=1))
