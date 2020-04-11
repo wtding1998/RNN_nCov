@@ -256,7 +256,11 @@ def train(command=False):
             # logs_train['mse_dec'] += mse_dec.item() * len(batch)
         # --- dynamic ---
             # data
-            batch_dyn = torch.tensor([b for b in batch if b < nex_dyn])
+            batch_dyn = [b for b in batch if b < nex_dyn]
+            if batch_dyn == []:
+                continue
+            else:
+                batch_dyn = torch.tensor(batch_dyn)
             input_t_dyn = idx_dyn[0][batch_dyn]
             input_x_dyn = idx_dyn[1][batch_dyn]
             # closure
