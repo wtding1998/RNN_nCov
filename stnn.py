@@ -238,8 +238,8 @@ class SaptioTemporalNN(nn.Module):
         z_gen = self.dynamic(z_context)
         return self.activation(z_gen)
 
-    def generate(self, nsteps):
-        z = self.factors[-1] #(nx, nz)
+    def generate(self, nsteps, start = -1):
+        z = self.factors[start] #(nx, nz)
         z_gen = []
         for t in range(nsteps):
             z = self.update_z(z)
@@ -1521,13 +1521,13 @@ class SaptioTemporalNN_input(nn.Module):
         '''
         return self.update_state(self.drop(self.factors[t_idx]), self.input_data[t_idx])
 
-    def generate(self, nsteps):
+    def generate(self, nsteps, start=-1):
         '''
         rec_gen : (nsteps, nx, nd)
         state_gen : (nsteps, nx, nz)
         '''
-        final_state = self.factors[-1].unsqueeze(0)
-        final_input = self.input_data[-1].unsqueeze(0)
+        final_state = self.factors[start].unsqueeze(0)
+        final_input = self.input_data[start].unsqueeze(0)
         state_gen = []
         rec_gen = []
         for t in range(nsteps):
@@ -1678,13 +1678,13 @@ class SaptioTemporalNN_concat(nn.Module):
         '''
         return self.update_state(self.drop(self.factors[t_idx]))
 
-    def generate(self, nsteps):
+    def generate(self, nsteps, start=-1):
         '''
         rec_gen : (nsteps, nx, nd)
         state_gen : (nsteps, nx, nz)
         '''
-        final_state = self.factors[-1].unsqueeze(0)
-        final_input = self.input_data[-1].unsqueeze(0)
+        final_state = self.factors[start].unsqueeze(0)
+        final_input = self.input_data[start].unsqueeze(0)
         state_gen = []
         rec_gen = []
         for t in range(nsteps):
@@ -1815,9 +1815,9 @@ class SaptioTemporalNN_input_simple(nn.Module):
         z_gen = self.dynamic(torch.cat([z_context, x_into_state], dim=1))
         return self.activation(z_gen)
 
-    def generate(self, nsteps):
-        z = self.factors[-1] #(nx, nz)
-        x = self.input_data[-1]
+    def generate(self, nsteps, start=-1):
+        z = self.factors[start] #(nx, nz)
+        x = self.input_data[start]
         z_gen = []
         x_gen = []
         for t in range(nsteps):
