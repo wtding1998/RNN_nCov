@@ -337,9 +337,9 @@ def train(command=False):
                 break
         else:
             if command:
-                pb.set_postfix(loss=logs_train['loss'])
+                pb.set_postfix(loss=logs_train['train_loss'])
             else:
-                print(e, 'loss=', logs_train['loss'])
+                print(e, 'loss=', logs_train['train_loss'])
     # ------------------------ Test ------------------------
     model.eval()
     with torch.no_grad():
