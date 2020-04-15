@@ -77,7 +77,7 @@ def train(command=False):
         p.add('--l1_rel', type=float, help='l1 regularization on relation discovery mode', default=0.)
         p.add('--sch_bound', type=float, help='learning rate', default=0.001)
         # -- learning
-        p.add('--batch_size', type=int, default=1131, help='batch size')
+        p.add('--batch_size', type=int, default=1, help='batch size')
         p.add('--patience', type=int, default=150, help='number of epoch to wait before trigerring lr decay')
         p.add('--nepoch', type=int, default=10, help='number of epochs to train for')
         p.add('--test', type=boolean_string, default=False, help='test during training')
