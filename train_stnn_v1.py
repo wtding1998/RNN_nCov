@@ -44,6 +44,7 @@ def train(command=False):
         p.add('--rescaled', type=str, help='rescaled method', default='d')
         p.add('--normalize_method', type=str, help='normalize method for relation', default='all')
         p.add('--relations', type=str, nargs='+', help='choose relations', default='all')
+        p.add('--time_datas', type=str, nargs='+', help='choose time data', default='all')
 
         # -- xp
         p.add('--outputdir', type=str, help='path to save xp', default='default')
@@ -175,7 +176,7 @@ def train(command=False):
     #######################################################################################################################
     # -- load data
 
-    setup, (train_data, test_data, validation_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop, opt.start_time, rescaled_method=opt.rescaled, normalize_method=opt.normalize_method, relations_names=opt.relations)
+    setup, (train_data, test_data, validation_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop, opt.start_time, rescaled_method=opt.rescaled, normalize_method=opt.normalize_method, relations_names=opt.relations, time_datas=opt.time_datas)
     # relations = relations[:, :, :, 0]
     train_data = train_data.to(device)
     test_data = test_data.to(device)

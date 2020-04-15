@@ -6,11 +6,14 @@ import torch
 from utils import DotDict, normalize, normalize_all_row
 
 
-def get_time_data(data_dir, disease_name, start_time=0):
+def get_time_data(data_dir, disease_name, start_time=0, time_datas='all'):
     # data_dir = 'data', disease_name = 'ncov' 
     # return (nt, nx, nd) time series data
     time_data_dir = os.path.join(data_dir, disease_name, 'time_data')
-    time_datas = os.listdir(time_data_dir)
+    if not isinstance(time_datas, list):
+        time_datas = os.listdir(time_data_dir)
+    else:
+        time_datas = [data_name+'.csv' for data_name in time_datas]
     data = []
     for time_data in time_datas:
         data_path = os.path.join(time_data_dir, time_data)
@@ -120,9 +123,9 @@ def get_multi_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0):
     test_data = data[nt_train:]
     return opt, (train_data, test_data), relations
 
-def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0, rescaled_method='d', normalize_method='all', normalize='variance', validation_ratio=0.1, relations_names='all'):
+def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0, rescaled_method='d', normalize_method='all', normalize='variance', validation_ratio=0.1, relations_names='all', time_datas='all'):
     # get dataset
-    data = get_time_data(data_dir, disease_name, start_time)
+    data = get_time_data(data_dir, disease_name, start_time, time_datas=time_datas)
     opt = DotDict()
     opt.nt, opt.nx, opt.nd = data.size()
     opt.normalize = normalize
