@@ -189,7 +189,7 @@ def get_keras_dataset(data_dir, disease_name, nt_train, seq_len, start_time=0, n
     if len(data) >= 2:
         data = np.concatenate(data, axis=2).astype(np.float64)
     else:
-        data = data[0][..., np.newaxis].astype(np.float64)
+        data = data[0].astype(np.float64)
     # get option
     opt = DotDict()
     opt.nt, opt.nx, opt.nd = data.shape
