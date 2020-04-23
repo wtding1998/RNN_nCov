@@ -181,4 +181,4 @@ logger.save(model)
 
 for i in range(opt.nd):
     d_pred = pred[:,:, i]
-    np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred_' + str(i).zfill(3) +  '.txt'), d_pred)
+    np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred_' + str(i).zfill(3) +  '.txt'), d_pred, delimiter=',')
