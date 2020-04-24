@@ -73,7 +73,7 @@ def get_relations(data_dir, disease_name, k, normalize_method='all', relations_n
         relation = torch.cat(new_rels, 1)
         relations.append(relation)
     relations = torch.cat(relations, dim=1)
-    return relations.float()
+    return relations.float(), [name.replace('.csv', '') for name in relations_names]
 
 def get_rnn_dataset(data_dir, disease, nt_train, seq_len, start_time=0, normalize='variance'):
     # get dataset
@@ -131,7 +131,7 @@ def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0, rescaled_
     opt.normalize = normalize
     opt.rescaled = rescaled_method
     opt.periode = opt.nt
-    relations = get_relations(data_dir, disease_name, k, normalize_method=normalize_method, relations_names=relations_names)
+    relations, opt.relations_order = get_relations(data_dir, disease_name, k, normalize_method=normalize_method, relations_names=relations_names)
     train_data = data[:nt_train]
     # print(train_data.shape)
     # # new_data = data.detach()
