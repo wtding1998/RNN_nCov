@@ -23,7 +23,7 @@ def get_time_data(data_dir, disease_name, start_time=0, time_datas='all'):
             new_data = new_data.unsqueeze(1)
         data.append(new_data)
 
-    return torch.stack(data, dim=2).float()[start_time:]
+    return torch.stack(data, dim=2).float()[start_time:], [data_name.replace('.csv', '') for data_name in time_datas]
 
 def get_multi_relations(data_dir, disease_name, k, start_time=0):
     '''
@@ -125,8 +125,8 @@ def get_multi_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0):
 
 def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0, rescaled_method='d', normalize_method='all', normalize='variance', validation_ratio=0.1, relations_names='all', time_datas='all'):
     # get dataset
-    data = get_time_data(data_dir, disease_name, start_time, time_datas=time_datas)
     opt = DotDict()
+    data, opt.datas_order = get_time_data(data_dir, disease_name, start_time, time_datas=time_datas)
     opt.nt, opt.nx, opt.nd = data.size()
     opt.normalize = normalize
     opt.rescaled = rescaled_method
