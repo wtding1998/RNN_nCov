@@ -102,27 +102,31 @@ class Exp():
         model.load_state_dict(torch.load(os.path.join(self.path, self.exp_name, 'model.pt')))
         return model
     
-    def pred(self, test_input=None, pred_reduce=False):
+    def pred(self, test_input=None):
         '''
         return pred with (nt, nx)
         if pred_reduce == True, return (nt)
         '''
         pa = os.path.join(self.path, self.exp_name)
         files = os.listdir(pa)
+        # ! consider 3-dims output
+        pred = []
         for file_name in files:
             if '.txt' in file_name:
-                pred = np.genfromtxt(os.path.join(self.path, self.exp_name, file_name), delimiter=',')
-        if len(pred.shape) == 1:
-            pred = pred.unsqueeze(0)
-        if pred.shape[0] == 1:
+                new_pred = np.genfromtxt(os.path.join(self.path, self.exp_name, file_name), delimiter=',')
+                if len(new_pred.shape) == 1:
+                    new_pred = new_pred[...,np.newaxis]
+                pred.append(new_pred)
+        pred = np.stack(pred, axis=2)  # (nt_pred, nx, nd)
+        if np.isnan(pred).any():
+            pred = []
             for file_name in files:
                 if '.txt' in file_name:
-                    pred = np.genfromtxt(os.path.join(self.path, self.exp_name, file_name))
-                if len(pred.size()) == 1:
-                    pred = pred[np.newaxis, ...]
-        pred = pred.T
-        if pred_reduce:
-            pred = np.sum(pred, axis=0)
+                    new_pred = np.genfromtxt(os.path.join(self.path, self.exp_name, file_name), delimiter=' ')
+                    if len(new_pred.shape) == 1:
+                        new_pred = new_pred[...,np.newaxis]
+                    pred.append(new_pred)
+        pred = np.stack(pred, axis=2)  # (nt_pred, nx, nd)
         return pred
 
           
@@ -175,3 +179,25 @@ class Printer():
         print("the df is :")
         print(df)
         return df.idxmin()['test_loss']
+
+def plot_pred(pred, data, start_time=0, title='Pred', dim=0):
+    '''
+    pred : (nt_pred, nx)
+    data : (nt, nx)
+    '''
+    pred_sum = pred[:, :, dim].sum(1) # (nt_pred)
+    data_sum = data[:, :, dim].sum(1) # (nt)
+    nt_pred = pred_sum.shape[0]
+    data_plotted = data_sum[-nt_pred - start_time:]
+    pred_plotted = np.concatenate([data_sum[-nt_pred - start_time: - nt_pred], pred_sum])
+    x_axis = np.arange(nt_pred + start_time)
+
+    plt.rcParams['font.sans-serif'] = ['KaiTi'] # 指定默认字体
+    plt.rcParams['axes.unicode_minus'] = False
+    fig = plt.figure()
+    plt.grid()
+    plt.plot(x_axis, pred_plotted, label='预测值', marker='*', linestyle='--')
+    plt.plot(x_axis, data_plotted, label='真实值', marker='o')
+    plt.axvline(x=start_time,ls="--")
+    plt.legend()
+    plt.title(title)
