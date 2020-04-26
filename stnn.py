@@ -1421,7 +1421,7 @@ class SaptioTemporalNN_input(nn.Module):
         elif mode == 'discover':
             self.relations = torch.cat(
                 (torch.eye(nx).to(device).unsqueeze(1), torch.ones(
-                    nx, 1, nx).to(device)), 1)
+                    nx, relations.size(1), nx).to(device)), 1)
         self.nr = self.relations.size(1) # number of relations, here nr = 2
         # modules
         self.drop = nn.Dropout(dropout_f)
@@ -1448,7 +1448,7 @@ class SaptioTemporalNN_input(nn.Module):
             self.rel_weights = nn.Parameter(
                 torch.Tensor(self.relations.sum().item() - self.nx))
         elif mode == 'discover':
-            self.rel_weights = nn.Parameter(torch.Tensor(nx, 1, nx))
+            self.rel_weights = nn.Parameter(torch.Tensor(nx, relations.size(1), nx))
         # init
         self._init_weights(periode)
 
@@ -1583,7 +1583,7 @@ class SaptioTemporalNN_concat(nn.Module):
         elif mode == 'discover':
             self.relations = torch.cat(
                 (torch.eye(nx).to(device).unsqueeze(1), torch.ones(
-                    nx, 1, nx).to(device)), 1)
+                    nx, relations.size(1), nx).to(device)), 1)
         self.nr = self.relations.size(1) # number of relations, here nr = 2
         # modules
         self.drop = nn.Dropout(dropout_f)
@@ -1608,7 +1608,7 @@ class SaptioTemporalNN_concat(nn.Module):
             self.rel_weights = nn.Parameter(
                 torch.Tensor(self.relations.sum().item() - self.nx))
         elif mode == 'discover':
-            self.rel_weights = nn.Parameter(torch.Tensor(nx, 1, nx))
+            self.rel_weights = nn.Parameter(torch.Tensor(nx, relations.size(1), nx))
         # init
         self._init_weights(periode)
 
@@ -1735,7 +1735,7 @@ class SaptioTemporalNN_input_simple(nn.Module):
         elif mode == 'discover':
             self.relations = torch.cat(
                 (torch.eye(nx).to(device).unsqueeze(1), torch.ones(
-                    nx, 1, nx).to(device)), 1)
+                    nx, relations.size(1), nx).to(device)), 1)
         self.nr = self.relations.size(1) # number of relations, here nr = 2
         # modules
         self.drop = nn.Dropout(dropout_f)
@@ -1751,7 +1751,7 @@ class SaptioTemporalNN_input_simple(nn.Module):
             self.rel_weights = nn.Parameter(
                 torch.Tensor(self.relations.sum().item() - self.nx))
         elif mode == 'discover':
-            self.rel_weights = nn.Parameter(torch.Tensor(nx, 1, nx))
+            self.rel_weights = nn.Parameter(torch.Tensor(nx, relations.size(1), nx))
         # init
         self._init_weights(periode)
 
