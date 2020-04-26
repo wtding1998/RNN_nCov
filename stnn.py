@@ -164,7 +164,7 @@ class SaptioTemporalNN(nn.Module):
         elif mode == 'discover':
             self.relations = torch.cat(
                 (torch.eye(nx).to(device).unsqueeze(1), torch.ones(
-                    nx, 1, nx).to(device)), 1)
+                    nx, relations.size(1), nx).to(device)), 1)
         self.nr = self.relations.size(1) # number of relations, here nr = 2
         # modules
         self.drop = nn.Dropout(dropout_f)
@@ -176,7 +176,7 @@ class SaptioTemporalNN(nn.Module):
             self.rel_weights = nn.Parameter(
                 torch.Tensor(self.relations.sum().item() - self.nx))
         elif mode == 'discover':
-            self.rel_weights = nn.Parameter(torch.Tensor(nx, 1, nx))
+            self.rel_weights = nn.Parameter(torch.Tensor(nx, self.nr - 1, nx))
         # init
         self._init_weights(periode)
 
@@ -232,6 +232,7 @@ class SaptioTemporalNN(nn.Module):
 
     def dyn_closure(self, t_idx, x_idx):
         rels = self.get_relations()
+        print(rels.size())
         z_input = self.drop(self.factors[t_idx])
         z_context = rels[x_idx].matmul(z_input).view(-1,
                                                      self.nr * self.nz)
