@@ -23,6 +23,16 @@ def rmse_np(x_pred, x_target):
 def rmse_tensor(x_pred, x_target):
     return x_pred.sub(x_target).pow(2).sum(-1).sqrt().mean()
 
+def copy_nonzero_weights(input):
+    """
+    Copy the non-zeros weights from a tensor
+    Param:
+    input: a tensor
+    Return a tensor of (#non_zero) 
+    """
+    non_zero_mask = input.ceil().clamp(0, 1).byte()
+    return torch.masked_select(input, non_zero_mask)
+
 def boolean_string(s):
     if s not in {'False', 'True'}:
         raise ValueError('Not a valid boolean string')
@@ -160,4 +170,4 @@ class Logger_keras(object):
 if __name__ == "__main__":
     a = torch.ones(2, 3, 3).float()
     b = torch.zeros(2, 3, 3).float()
-    print(rmse(a, b, reduce=False))
+    print(copy_nonzero_weights(a))

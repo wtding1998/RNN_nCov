@@ -4,7 +4,7 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 
 from module import MLP, MLP_tanh
-from utils import identity
+from utils import identity, copy_nonzero_weights
 
 
 # class SaptioTemporalNN_multitime(nn.Module):
@@ -55,9 +55,9 @@ from utils import identity
 #         elif mode == 'discover':
 #             self.rel_weights = nn.Parameter(torch.Tensor(nx, 1, nx, nt_train))
 #         # init
-#         self._init_weights(periode)
+#         self._init_factors(periode)
 
-#     def _init_weights(self, periode):
+#     def _init_factors(self, periode):
 #         initrange = 0.1
 #         if periode >= self.nt_train:
 #             self.factors.data.uniform_(-initrange, initrange)
@@ -178,9 +178,15 @@ class SaptioTemporalNN(nn.Module):
         elif mode == 'discover':
             self.rel_weights = nn.Parameter(torch.Tensor(nx, self.nr - 1, nx))
         # init
-        self._init_weights(periode)
+        self._init_factors(periode)
+        if self.mode == 'refine':
+            self.rel_weights.data = copy_nonzero_weights(relations)
+        elif self.mode == 'discover':
+            self.rel_weights.data = relations.data
 
-    def _init_weights(self, periode):
+
+
+    def _init_factors(self, periode):
         initrange = 1.0
         if periode >= self.nt:
             self.factors.data.uniform_(-initrange, initrange)
@@ -192,10 +198,10 @@ class SaptioTemporalNN(nn.Module):
                 init = torch.Tensor(self.nx, self.nz).uniform_(
                     -initrange, initrange).repeat(idx.sum().item(), 1, 1)
             self.factors.data.masked_scatter_(idx_data, init.view(-1))
-        if self.mode == 'refine':
-            self.rel_weights.data.fill_(0.5)
-        elif self.mode == 'discover':
-            self.rel_weights.data.fill_(1 / self.nx)
+        # if self.mode == 'refine':
+        #     self.rel_weights.data.fill_(0.5)
+        # elif self.mode == 'discover':
+        #     self.rel_weights.data.fill_(1 / self.nx)
 
     def get_relations(self):
         if self.mode is None:
@@ -302,9 +308,9 @@ class SaptioTemporalNN_noz(nn.Module):
         elif mode == 'discover':
             self.rel_weights = nn.Parameter(torch.Tensor(nx, 1, nx))
         # init
-        #  self._init_weights(periode)
+        #  self._init_factors(periode)
 
-    def _init_weights(self, periode): #初始化权重
+    def _init_factors(self, periode): #初始化权重
         initrange = 1.0
         if periode >= self.nt:
             self.factors.data.uniform_(-initrange, initrange)
@@ -421,9 +427,9 @@ class SaptioTemporalNN_large(nn.Module):
         elif mode == 'discover':
             self.rel_weights = nn.Parameter(torch.Tensor(nx, 1, nx))
         # init
-        self._init_weights(periode)
+        self._init_factors(periode)
 
-    def _init_weights(self, periode): #初始化权重
+    def _init_factors(self, periode): #初始化权重
         initrange = 1.0
         if periode >= self.nt:
             self.factors.data.uniform_(-initrange, initrange)
@@ -558,9 +564,9 @@ class SaptioTemporalNNbias(nn.Module):
         elif mode == 'discover':
             self.rel_weights = nn.Parameter(torch.Tensor(nx, 1, nx))
         # init
-        self._init_weights(periode)
+        self._init_factors(periode)
 
-    def _init_weights(self, periode): #初始化权重
+    def _init_factors(self, periode): #初始化权重
         initrange = 1.0
         if periode >= self.nt:
             self.factors.data.uniform_(-initrange, initrange)
@@ -678,9 +684,9 @@ class SaptioTemporalNNbias_noz(nn.Module):
         elif mode == 'discover':
             self.rel_weights = nn.Parameter(torch.Tensor(nx, 1, nx))
         # init
-        #  self._init_weights(periode)
+        #  self._init_factors(periode)
 
-    def _init_weights(self, periode): #初始化权重
+    def _init_factors(self, periode): #初始化权重
         initrange = 1.0
         if periode >= self.nt:
             self.factors.data.uniform_(-initrange, initrange)
@@ -797,9 +803,9 @@ class SaptioTemporalNNbias_large(nn.Module):
         elif mode == 'discover':
             self.rel_weights = nn.Parameter(torch.Tensor(nx, 1, nx))
         # init
-        self._init_weights(periode)
+        self._init_factors(periode)
 
-    def _init_weights(self, periode): #初始化权重
+    def _init_factors(self, periode): #初始化权重
         initrange = 1.0
         if periode >= self.nt:
             self.factors.data.uniform_(-initrange, initrange)
@@ -936,9 +942,9 @@ class SaptioTemporalNN_largedecoder(nn.Module):
         elif mode == 'discover':
             self.rel_weights = nn.Parameter(torch.Tensor(nx, 1, nx))
         # init
-        self._init_weights(periode)
+        self._init_factors(periode)
 
-    def _init_weights(self, periode): #初始化权重
+    def _init_factors(self, periode): #初始化权重
         initrange = 1.0
         if periode >= self.nt:
             self.factors.data.uniform_(-initrange, initrange)
@@ -1056,9 +1062,9 @@ class SaptioTemporalNN_GRU(nn.Module):
         elif mode == 'discover':
             self.rel_weights = nn.Parameter(torch.Tensor(nx, 1, nx))
         # init
-        self._init_weights(periode)
+        self._init_factors(periode)
 
-    def _init_weights(self, periode): #初始化权重
+    def _init_factors(self, periode): #初始化权重
         initrange = 1.0
         if periode >= self.nt:
             self.factors.data.uniform_(-initrange, initrange)
@@ -1183,9 +1189,9 @@ class SaptioTemporalNN_LSTM(nn.Module):
         elif mode == 'discover':
             self.rel_weights = nn.Parameter(torch.Tensor(nx, 1, nx))
         # init
-        self._init_weights(periode)
+        self._init_factors(periode)
 
-    def _init_weights(self, periode): #初始化权重
+    def _init_factors(self, periode): #初始化权重
         initrange = 1.0
         if periode >= self.nt:
             self.factors.data.uniform_(-initrange, initrange)
@@ -1311,9 +1317,9 @@ class SaptioTemporalNN_tanh(nn.Module):
         elif mode == 'discover':
             self.rel_weights = nn.Parameter(torch.Tensor(nx, 1, nx))
         # init
-        self._init_weights(periode)
+        self._init_factors(periode)
 
-    def _init_weights(self, periode): #初始化权重
+    def _init_factors(self, periode): #初始化权重
         initrange = 1.0
         if periode >= self.nt:
             self.factors.data.uniform_(-initrange, initrange)
@@ -1450,9 +1456,13 @@ class SaptioTemporalNN_input(nn.Module):
         elif mode == 'discover':
             self.rel_weights = nn.Parameter(torch.Tensor(nx, relations.size(1), nx))
         # init
-        self._init_weights(periode)
-
-    def _init_weights(self, periode): #初始化权重
+        self._init_factors(periode)
+        if self.mode == 'refine':
+            self.rel_weights.data = copy_nonzero_weights(relations)
+        elif self.mode == 'discover':
+            self.rel_weights.data = relations.data
+            
+    def _init_factors(self, periode): #初始化权重
         initrange = 1.0
         if periode >= self.nt:
             self.factors.data.uniform_(-initrange, initrange)
@@ -1464,10 +1474,10 @@ class SaptioTemporalNN_input(nn.Module):
                 init = torch.Tensor(self.nx, self.nz).uniform_(
                     -initrange, initrange).repeat(idx.sum().item(), 1, 1)
             self.factors.data.masked_scatter_(idx_data, init.view(-1))
-        if self.mode == 'refine':
-            self.rel_weights.data.fill_(0.5)
-        elif self.mode == 'discover':
-            self.rel_weights.data.fill_(1 / self.nx)
+        # if self.mode == 'refine':
+        #     self.rel_weights.data.fill_(0.5)
+        # elif self.mode == 'discover':
+        #     self.rel_weights.data.fill_(1 / self.nx)
 
     def get_relations(self):
         if self.mode is None:
@@ -1610,9 +1620,13 @@ class SaptioTemporalNN_concat(nn.Module):
         elif mode == 'discover':
             self.rel_weights = nn.Parameter(torch.Tensor(nx, relations.size(1), nx))
         # init
-        self._init_weights(periode)
+        self._init_factors(periode)
+        if self.mode == 'refine':
+            self.rel_weights.data = copy_nonzero_weights(relations)
+        elif self.mode == 'discover':
+            self.rel_weights.data = relations.data
 
-    def _init_weights(self, periode): #初始化权重
+    def _init_factors(self, periode): #初始化权重
         initrange = 1.0
         if periode >= self.nt:
             self.factors.data.uniform_(-initrange, initrange)
@@ -1624,10 +1638,10 @@ class SaptioTemporalNN_concat(nn.Module):
                 init = torch.Tensor(self.nx, self.nz).uniform_(
                     -initrange, initrange).repeat(idx.sum().item(), 1, 1)
             self.factors.data.masked_scatter_(idx_data, init.view(-1))
-        if self.mode == 'refine':
-            self.rel_weights.data.fill_(0.5)
-        elif self.mode == 'discover':
-            self.rel_weights.data.fill_(1 / self.nx)
+        # if self.mode == 'refine':
+        #     self.rel_weights.data.fill_(0.5)
+        # elif self.mode == 'discover':
+        #     self.rel_weights.data.fill_(1 / self.nx)
 
     def get_relations(self):
         if self.mode is None:
@@ -1753,9 +1767,13 @@ class SaptioTemporalNN_input_simple(nn.Module):
         elif mode == 'discover':
             self.rel_weights = nn.Parameter(torch.Tensor(nx, relations.size(1), nx))
         # init
-        self._init_weights(periode)
+        self._init_factors(periode)
+        if self.mode == 'refine':
+            self.rel_weights.data = copy_nonzero_weights(relations)
+        elif self.mode == 'discover':
+            self.rel_weights.data = relations.data
 
-    def _init_weights(self, periode):
+    def _init_factors(self, periode):
         initrange = 1.0
         if periode >= self.nt:
             self.factors.data.uniform_(-initrange, initrange)
@@ -1767,10 +1785,10 @@ class SaptioTemporalNN_input_simple(nn.Module):
                 init = torch.Tensor(self.nx, self.nz).uniform_(
                     -initrange, initrange).repeat(idx.sum().item(), 1, 1)
             self.factors.data.masked_scatter_(idx_data, init.view(-1))
-        if self.mode == 'refine':
-            self.rel_weights.data.fill_(0.5)
-        elif self.mode == 'discover':
-            self.rel_weights.data.fill_(1 / self.nx)
+        # if self.mode == 'refine':
+        #     self.rel_weights.data.fill_(0.5)
+        # elif self.mode == 'discover':
+        #     self.rel_weights.data.fill_(1 / self.nx)
 
     def get_relations(self):
         if self.mode is None:
