@@ -1415,6 +1415,7 @@ class SaptioTemporalNN_input(nn.Module):
         self.nd = nd
         self.mode = mode
         # kernel
+        device = relations.device
         if mode is None or mode == 'refine':
             self.relations = torch.cat(
                 (torch.eye(nx).to(device).unsqueeze(1), relations), 1)
