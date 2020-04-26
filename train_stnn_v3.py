@@ -153,7 +153,7 @@ def train(command=False):
         opt.outputdir = opt.dataset + "_" + opt.mode 
         opt.xp = get_time()
     opt.mode = opt.mode if opt.mode in ('refine', 'discover') else None
-    opt.xp = 'input-' + opt.xp
+    opt.xp = 'v3-' + opt.xp
     opt.start = time_dir()
     start_st = datetime.datetime.now()
     opt.st = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
@@ -199,6 +199,7 @@ def train(command=False):
     #######################################################################################################################
     model = SaptioTemporalNN_input_simple(relations, train_data, opt.nx, opt.nt_train, opt.nd, opt.nz, opt.mode, opt.nhid, opt.nlayers,
                         opt.dropout_f, opt.dropout_d, opt.activation, opt.periode).to(device)
+    relations_0 = model.get_relations()[:, 1:]
     #######################################################################################################################
     # Optimizer
     #######################################################################################################################
@@ -288,12 +289,21 @@ def train(command=False):
             # logger.log('train_iter.mse_dyn', mse_dyn.item())
             logs_train['mse_dyn'] += mse_dyn.item() * len(batch_dyn)
             logs_train['loss_dyn'] += loss_dyn.item() * len(batch_dyn)
+            # === relations difference ===
+            relation_diff = model.get_relations()[:, 1:] - relations_0
+            logs_train['relation_max'] += relation_diff.max().item()
+            logs_train['relation_min'] += relation_diff.min().item()
+            logs_train['relation_mean'] += relation_diff.mean().item()            
 
         # --- logs ---
         logs_train['mse_dec'] /= nex_dec
         logs_train['mse_dyn'] /= nex_dyn
         logs_train['loss_dyn'] /= nex_dyn
         logs_train['train_loss'] = logs_train['mse_dec'] + logs_train['loss_dyn']
+        # === relations difference ===
+        logs_train['relation_max'] /= len(batches)
+        logs_train['relation_min'] /= len(batches)
+        logs_train['relation_mean'] /= len(batches)        
         logger.log('train_epoch', logs_train)
         # checkpoint
         # logger.log('train_epoch.lr', lr)

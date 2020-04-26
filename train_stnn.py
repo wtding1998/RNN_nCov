@@ -233,7 +233,7 @@ def train(command=False):
     if opt.patience > 0:
         lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=opt.patience)
 
-
+    relations_0 = model.get_relations()[:, 1:]
     #######################################################################################################################
     # Logs
     #######################################################################################################################
@@ -256,9 +256,9 @@ def train(command=False):
         model.train()
         # --- decoder ---
         idx_perm = torch.randperm(nex_dec).to(device)
-        batches = idx_perm.split(opt.batch_size)
+        batches_dec = idx_perm.split(opt.batch_size)
         logs_train = defaultdict(float)
-        for i, batch in enumerate(batches):
+        for i, batch in enumerate(batches_dec):
             optimizer.zero_grad()
             # data
             input_t = idx_dec[0][batch]
@@ -274,10 +274,16 @@ def train(command=False):
             # log
             # logger.log('train_iter.mse_dec', mse_dec.item())
             logs_train['mse_dec'] += mse_dec.item() * len(batch)
+            # === relation difference ===
+            relation_diff = model.get_relations()[:, 1:] - relations_0
+            logs_train['relation_max'] += relation_diff.max().item()
+            logs_train['relation_min'] += relation_diff.min().item()
+            logs_train['relation_mean'] += relation_diff.mean().item()
+
         # --- dynamic ---
         idx_perm = torch.randperm(nex_dyn).to(device)
-        batches = idx_perm.split(opt.batch_size)
-        for i, batch in enumerate(batches):
+        batches_dyn = idx_perm.split(opt.batch_size)
+        for i, batch in enumerate(batches_dyn):
             optimizer.zero_grad()
             # data
             input_t = idx_dyn[0][batch]
@@ -305,13 +311,20 @@ def train(command=False):
             # logger.log('train_iter.mse_dyn', mse_dyn.item())
             logs_train['mse_dyn'] += mse_dyn.item() * len(batch)
             logs_train['loss_dyn'] += loss_dyn.item() * len(batch)
-
+            # === relation diffenerce ===
+            relation_diff = model.get_relations()[:, 1:] - relations_0
+            logs_train['relation_max'] += relation_diff.max().item()
+            logs_train['relation_min'] += relation_diff.min().item()
+            logs_train['relation_mean'] += relation_diff.mean().item()
 
         # --- logs ---
         # TODO:
         logs_train['mse_dec'] /= nex_dec
         logs_train['mse_dyn'] /= nex_dyn
         logs_train['loss_dyn'] /= nex_dyn
+        logs_train['relation_max'] /= len(batches_dec) + len(batches_dyn)
+        logs_train['relation_min'] /= len(batches_dec) + len(batches_dyn)
+        logs_train['relation_mean'] /= len(batches_dec) + len(batches_dyn)
         logs_train['train_loss'] = logs_train['mse_dec'] + logs_train['loss_dyn']
         logger.log('train_epoch', logs_train)
         # checkpoint

@@ -238,7 +238,6 @@ class SaptioTemporalNN(nn.Module):
 
     def dyn_closure(self, t_idx, x_idx):
         rels = self.get_relations()
-        print(rels.size())
         z_input = self.drop(self.factors[t_idx])
         z_context = rels[x_idx].matmul(z_input).view(-1,
                                                      self.nr * self.nz)
