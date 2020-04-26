@@ -26,7 +26,7 @@ import torch.backends.cudnn as cudnn
 
 
 from get_dataset import get_stnn_data
-from utils import DotDict, Logger, rmse, boolean_string, get_dir, get_time, time_dir
+from utils import DotDict, Logger, rmse, boolean_string, get_dir, get_time, time_dir, rmse_np
 from stnn import SaptioTemporalNN_input
 
 def train(command=False):
@@ -326,21 +326,36 @@ def train(command=False):
         score = rmse(x_pred, test_data)
     # logger.log('test.rmse', score)
     # logger.log('test.ts', {t: {'rmse': scr.item()} for t, scr in enumerate(score_ts)})
+    true_pred_data = torch.zeros_like(x_pred)
+    true_test_data = torch.zeros_like(test_data)
     if opt.normalize == 'variance':
         true_pred_data = x_pred * opt.std + opt.mean
         true_test_data = test_data * opt.std + opt.mean
-    elif opt.normalize == 'min_max':
+    if opt.normalize == 'min_max':
         true_pred_data = x_pred * (opt.max - opt.min) + opt.mean
         true_test_data = test_data * (opt.max - opt.min) + opt.mean
-
     true_score = rmse(true_pred_data, true_test_data)
+    # print(true_pred_data)
+
+    x_pred = x_pred.cpu().numpy()
+    test_data = test_data.cpu().numpy()
+    true_pred_data = true_pred_data.cpu().numpy()
+    true_test_data = true_test_data.cpu().numpy()
+    # save pred and loss
     for i in range(opt.nd):
-        d_pred =true_pred_data[:,:, i].cpu().numpy()
-        # print(d_pred)
-        np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'true_pred_' + str(i).zfill(3) +  '.txt'), d_pred, delimiter=',')
-    opt.train_loss = train_loss.item()
+        d_pred =true_pred_data[:,:, i]
+        data_kind = opt.datas_order[i]
+        np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred_' + data_kind + '.txt'), d_pred, delimiter=',')
+        opt['score_true_' + data_kind] = rmse_np(d_pred, true_test_data[:, :, i])
+        opt['score_' + data_kind] = rmse_np(x_pred[:, :, i], test_data[:, :, i])
+    # save relations
+    final_relations = model.get_relations()[:, 1:].detach().cpu().numpy()
+    for i, rel_name in enumerate(opt.relations_order):
+        single_rel = final_relations[:, i]
+        np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'rel_' + rel_name + '.txt'), single_rel, delimiter=',')
     opt.test_loss = score
     opt.true_loss = true_score
+    opt.train_loss = logs_train['train_loss']
     opt.end = time_dir()
     end_st = datetime.datetime.now()
     opt.et = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
@@ -348,6 +363,7 @@ def train(command=False):
     with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
         json.dump(opt, f, sort_keys=True, indent=4)
     logger.save(model)
+
 
 if __name__ == "__main__":
     train(True)
