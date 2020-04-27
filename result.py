@@ -88,7 +88,7 @@ class Exp():
         return get_logs(os.path.join(self.path, self.exp_name))
 
     def train_loss(self):
-        return self.logs()['train_epoch.loss']
+        return self.logs()['train_loss.epoch']
 
     def model(self):
         if self.model_name() == 'LSTM':
@@ -126,7 +126,7 @@ class Exp():
                     if len(new_pred.shape) == 1:
                         new_pred = new_pred[...,np.newaxis]
                     pred.append(new_pred)
-        pred = np.stack(pred, axis=2)  # (nt_pred, nx, nd)
+            pred = np.stack(pred, axis=2)  # (nt_pred, nx, nd)
         return pred
 
           
@@ -136,7 +136,7 @@ class Printer():
         self.dataset = self.folder.split('_')[0]
         self.model = self.folder.split('_')[1]
 
-    def models(self):
+    def exp_models(self):
         return next_dir(self.folder)
 
     def get_model(self, string):
@@ -172,6 +172,12 @@ class Printer():
             df.loc['mean'] = df.apply(lambda x: x.mean())
         if min:
             df.loc['min'] = df.apply(lambda x: x.min())
+
+        df['used_model'] = df.index
+        for i in range(len(df.index)):
+            exp_name = df.iloc[i, -1]
+            used_model = exp_name.split('-')[0]
+            df.iloc[i, -1] = used_model
         return df
 
     def min_idx(self, col=['test_loss', 'train_loss', 'nhid', 'nlayers'], required_list = 'all'):
@@ -201,3 +207,72 @@ def plot_pred(pred, data, start_time=0, title='Pred', dim=0):
     plt.axvline(x=start_time,ls="--")
     plt.legend()
     plt.title(title)
+
+def sorted_by_loss(df, value='test_loss', merges=['used_model']):
+    # get the different kind of model
+    models = []
+    models_loss = {}
+    for i in range(len(df.index)):
+        exp_data = df.iloc[i]
+        merged_data = []
+        for kind in merges:
+            merged_data.append(exp_data[kind])
+
+        loss = exp_data[value]
+        merged_data = [str(a) for a in merged_data]
+        merged_data = '_'.join(merged_data) 
+
+        if merged_data not in models:
+            models.append(merged_data)
+            models_loss[merged_data] = [loss, i]
+        elif loss < models_loss[merged_data][0]:
+            models_loss[merged_data] = [loss, i]
+    indexs = []
+    for k, v in models_loss.items():
+        indexs.append(v[1])
+    return df.iloc[indexs]
+
+def get_exp_name(df, choosen_values=['used_model']):
+    index_dir = {}
+    for i in range(len(df.index)):
+        exp_data = df.iloc[i]
+        model_index = []
+        for value in choosen_values:
+            model_index.append(exp_data[value])
+        model_index = [str(value) for value in model_index]
+        model_index = '_'.join(model_index)
+        index_dir[model_index] = df.index[i]
+    return index_dir
+
+def get_pred(exp_dir, folder):
+    pred_dir = {}
+    for model_name, exp_name in exp_dir.items():
+        pred_dir[model_name] = Exp(exp_name, folder).pred()
+    return pred_dir
+
+def plot_pred_by_dir(pred_dir, data, start_time=0, title='Pred', dim=0):
+    '''
+    pred : {'model_name': (nt_pred, nx, nd)}
+    data : (nt, nx, nd)
+    '''
+    nt_pred = pred_dir[list(pred_dir.keys())[0]].shape[0]
+    data_sum = data[:,:, dim].sum(1)
+    plotted_dir = {}
+    for model_name, pred in pred_dir.items():
+        pred_sum = pred[:, :, dim].sum(1) # (nt_pred)
+        pred_plotted = np.concatenate([data_sum[-nt_pred - start_time: - nt_pred], pred_sum])
+        plotted_dir[model_name] = pred_plotted
+    
+    data_plotted = data_sum[-nt_pred - start_time:]
+    x_axis = np.arange(nt_pred + start_time)
+    # plt.rcParams['font.sans-serif'] = ['KaiTi'] # 指定默认字体
+    # plt.rcParams['axes.unicode_minus'] = False
+    fig = plt.figure()
+    plt.grid()
+    for model_name, pred_plotted in plotted_dir.items():
+        plt.plot(x_axis, pred_plotted, label=model_name, marker='*', linestyle='--')
+    plt.plot(x_axis, data_plotted, label='ground_truth', marker='o')
+    plt.axvline(x=start_time,ls="--")
+    plt.legend()
+    plt.title(title)
+    return plotted_dir

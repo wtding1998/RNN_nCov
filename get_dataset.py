@@ -192,6 +192,8 @@ def get_keras_dataset(data_dir, disease_name, nt_train, seq_len, start_time=0, n
         data = data[0].astype(np.float64)
     # get option
     opt = DotDict()
+    if len(data.shape) == 2:
+        data = data[..., np.newaxis]
     opt.nt, opt.nx, opt.nd = data.shape
     opt.normalize = normalize
     train_data = data[:nt_train]

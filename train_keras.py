@@ -38,6 +38,7 @@ p.add('--seq_length', type=int, help='sequence length', default=3)
 p.add('--nhid', type=int, help='dynamic function hidden size', default=50)
 p.add('--nlayers', type=int, help='dynamic function num layers', default=2)
 p.add('--dropout', type=float, help='dropout rate', default=0.5)
+p.add('--activation', type=str, help='activation', default='relu')
 p.add('--rnn_model', type=str, help='choose rnn model : LSTM | GRU', default='GRU')
 # -- optim
 p.add('--lr', type=float, help='learning rate', default=1e-2)
@@ -101,7 +102,7 @@ elif opt.rnn_model == 'GRU':
             opt.nhid,
             input_shape=(None, opt.nx*opt.nd),
             return_sequences=True))
-model.add(Dense(opt.nx*opt.nd, activation='tanh'))
+model.add(Dense(opt.nx*opt.nd, activation=opt.activation))
 model.add(Dropout(opt.dropout))
 # middle layers
 for i in range(opt.nlayers-2):
@@ -113,7 +114,7 @@ for i in range(opt.nlayers-2):
         model.add(GRU(
             opt.nhid,
             return_sequences=True))
-    model.add(Dense(opt.nx*opt.nd, activation='tanh'))
+    model.add(Dense(opt.nx*opt.nd, activation=opt.activation))
     model.add(Dropout(opt.dropout))
 
 # final layer
@@ -129,7 +130,7 @@ model.add(Dropout(opt.dropout))
 
 model.add(Dense(
     opt.nx*opt.nd))
-model.add(Activation("tanh"))
+model.add(Activation(opt.activation))
 model.compile(loss="mse", optimizer='rmsprop', metrics=['mae', 'mape'])
 
 #######################################################################################################################
