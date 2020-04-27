@@ -276,9 +276,10 @@ def train(command=False):
             # logger.log('train_iter.mse_dyn', mse_dyn.item())
             # === relations difference ===
             relation_diff = model.get_relations()[:, 1:] - relations_0
-            logs_train['relation_max'] += relation_diff.max().item()
-            logs_train['relation_min'] += relation_diff.min().item()
-            logs_train['relation_mean'] += relation_diff.mean().item()
+            for i, rel_name in enumerate(opt.relations_order): 
+                logs_train[rel_name + '_max'] += relation_diff[:, i].max().item()
+                logs_train[rel_name + '_min'] += relation_diff[:, i].min().item()
+                logs_train[rel_name + '_mean'] += relation_diff[:, i].mean().item()
 
             logs_train['mse_dyn'] += mse_dyn.item() * len(batch)
             logs_train['loss_dyn'] += loss_dyn.item() * len(batch)
@@ -289,9 +290,10 @@ def train(command=False):
         logs_train['loss_dyn'] /= (opt.nt_train - 1)
         logs_train['loss'] = logs_train['mse_dec'] + logs_train['loss_dyn']
         # === relations difference ===
-        logs_train['relation_max'] /= len(batches)
-        logs_train['relation_min'] /= len(batches)
-        logs_train['relation_mean'] /= len(batches)
+        for i, rel_name in enumerate(opt.relations_order): 
+            logs_train[rel_name + '_max'] /= len(batches)
+            logs_train[rel_name + '_min'] /= len(batches)
+            logs_train[rel_name + '_mean'] /= len(batches)
         logger.log('train_epoch', logs_train)
         # checkpoint
         # logger.log('train_epoch.lr', lr)

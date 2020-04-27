@@ -265,9 +265,10 @@ def train(command=False):
             logs_train['mse_dec'] += mse_dec.item() * len(batch)
             # === relation difference ===
             relation_diff = model.get_relations()[:, 1:] - relations_0
-            logs_train['relation_max'] += relation_diff.max().item()
-            logs_train['relation_min'] += relation_diff.min().item()
-            logs_train['relation_mean'] += relation_diff.mean().item()
+            for i, rel_name in enumerate(opt.relations_order): 
+                logs_train[rel_name + '_max'] += relation_diff[:, i].max().item()
+                logs_train[rel_name + '_min'] += relation_diff[:, i].min().item()
+                logs_train[rel_name + '_mean'] += relation_diff[:, i].mean().item()
 
         # --- dynamic ---
         idx_perm = torch.randperm(nex_dyn).to(device)
@@ -302,18 +303,19 @@ def train(command=False):
             logs_train['loss_dyn'] += loss_dyn.item() * len(batch)
             # === relation diffenerce ===
             relation_diff = model.get_relations()[:, 1:] - relations_0
-            logs_train['relation_max'] += relation_diff.max().item()
-            logs_train['relation_min'] += relation_diff.min().item()
-            logs_train['relation_mean'] += relation_diff.mean().item()
-
+            for i, rel_name in enumerate(opt.relations_order): 
+                logs_train[rel_name + '_max'] += relation_diff[:, i].max().item()
+                logs_train[rel_name + '_min'] += relation_diff[:, i].min().item()
+                logs_train[rel_name + '_mean'] += relation_diff[:, i].mean().item()
         # --- logs ---
         # TODO:
         logs_train['mse_dec'] /= nex_dec
         logs_train['mse_dyn'] /= nex_dyn
         logs_train['loss_dyn'] /= nex_dyn
-        logs_train['relation_max'] /= len(batches_dec) + len(batches_dyn)
-        logs_train['relation_min'] /= len(batches_dec) + len(batches_dyn)
-        logs_train['relation_mean'] /= len(batches_dec) + len(batches_dyn)
+        for i, rel_name in enumerate(opt.relations_order): 
+            logs_train[rel_name + '_max'] /= len(batches_dec) + len(batches_dyn)
+            logs_train[rel_name + '_min'] /= len(batches_dec) + len(batches_dyn)
+            logs_train[rel_name + '_mean'] /= len(batches_dec) + len(batches_dyn)
         logs_train['train_loss'] = logs_train['mse_dec'] + logs_train['loss_dyn']
         logger.log('train_epoch', logs_train)
         # checkpoint
