@@ -5,7 +5,7 @@ import pandas
 import numpy as np
 import matplotlib.pyplot as plt
 from rnn_model import *
-from utils import normalize, DotDict, Logger, rmse, rmse_tensor, boolean_string, get_dir, get_time, next_dir, get_model, model_dir
+from utils import normalize, DotDict, Logger, rmse, rmse_tensor, boolean_string, get_dir, get_time, next_dir, get_model, model_dir, rmse_np
 from stnn import SaptioTemporalNN
 
 
@@ -83,7 +83,6 @@ class Exp():
         relations = normalize(relations).unsqueeze(1)
         return relations
         
-
     def logs(self):
         return get_logs(os.path.join(self.path, self.exp_name))
 
@@ -112,7 +111,7 @@ class Exp():
         # ! consider 3-dims output
         pred = []
         for file_name in files:
-            if '.txt' in file_name:
+            if 'pred' in file_name:
                 new_pred = np.genfromtxt(os.path.join(self.path, self.exp_name, file_name), delimiter=',')
                 if len(new_pred.shape) == 1:
                     new_pred = new_pred[...,np.newaxis]
@@ -121,13 +120,66 @@ class Exp():
         if np.isnan(pred).any():
             pred = []
             for file_name in files:
-                if '.txt' in file_name:
+                if 'pred' in file_name:
                     new_pred = np.genfromtxt(os.path.join(self.path, self.exp_name, file_name), delimiter=' ')
                     if len(new_pred.shape) == 1:
                         new_pred = new_pred[...,np.newaxis]
                     pred.append(new_pred)
             pred = np.stack(pred, axis=2)  # (nt_pred, nx, nd)
         return pred
+    
+    def calculate_rmse_loss(self, data_kind='confirmed'):
+        '''
+        Calculate the data_loss of exp
+        '''
+        dataset_name = self.config['dataset']
+        nd = self.config['nd']
+        nx = self.config['nx']
+        time_datas = self.config['time_datas']
+        # --- get test data ---
+        time_data_dir = os.path.abspath(os.path.join('data', dataset_name, 'time_data'))
+        if not isinstance(time_datas, list):
+            time_datas = os.listdir(time_data_dir)
+        else:
+            time_datas = [data_name+'.csv' for data_name in time_datas]
+        data = []
+        for time_data in time_datas:
+            data_path = os.path.join(time_data_dir, time_data)
+            new_data = np.genfromtxt(data_path, encoding='utf-8', delimiter=',')
+            if len(new_data.shape) == 1:
+                new_data.shape = (-1, 1)
+            data.append(new_data)
+        data = np.stack(data, axis=2)
+        # --- get prediction ---
+        pred_data = self.pred()
+        nt_pred = pred_data.shape[0]
+        test_data = data[-nt_pred:]
+        # if nd = 1, then the pred data is confirmed
+        if nd == 1:
+            pred_data.shape = (-1, nx)
+            test_data.shape = (-1, nx)
+        # if nd > 1, then the pred could be pred_001 or pred_confirmed, if datas_order in config
+        # elif 'datas_order' in self.config:
+        #     data_index = self.config['datas_order'].index(data_kind)
+        #     pred_data = pred_data[:,:, data_index]
+        #     test_data = test_data[:,:, data_index]
+        # or else is in data_kind
+        else:
+            pred_data = pred_data[:,:, 0]
+            test_data = test_data[:,:, 0]
+        # print(test_data)
+        # print(pred_data)
+        rmse_loss = rmse_np(pred_data, test_data)
+        self.config['loss_true_' + data_kind] = rmse_loss
+        # --- calculate loss before renormalize---
+        if self.config['normalize'] == 'variance':
+            self.config['loss_' + data_kind] = rmse_loss / self.config['std']
+        if self.config['normalize'] == 'min_max':
+            self.config['loss_' + data_kind] = rmse_loss / (self.config['max'] - self.config['min'])
+        # --- add loss to config
+        with open(os.path.join(self.path, self.exp_name, 'config.json'), 'w') as f:
+            json.dump(self.config, f, sort_keys=True, indent=4)
+        return rmse_loss
 
           
 class Printer():
@@ -157,7 +209,6 @@ class Printer():
                 df_dir[exp_name] = config
             except:
                 print(exp_name, ' x')
-
 
         df = pandas.DataFrame(df_dir)
         df = pandas.DataFrame(df.values.T, index=df.columns, columns=df.index)[col]
@@ -276,3 +327,12 @@ def plot_pred_by_dir(pred_dir, data, start_time=0, title='Pred', dim=0):
     plt.legend()
     plt.title(title)
     return plotted_dir
+
+
+if __name__ == "__main__":
+    path = 'D:/Jupyter_Documents/ML-code/research_code/output/jar0426'
+    exp_name = 'v3-stnn_04-27-08-31-14'
+    # exp_name = 'v3-stnn_04-27-09-19-04'
+    exp = Exp(exp_name, path)
+    print(exp.config['score_true_confirmed'])
+    print(exp.calculate_rmse_loss())
