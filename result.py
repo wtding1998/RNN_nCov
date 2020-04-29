@@ -180,7 +180,29 @@ class Exp():
         with open(os.path.join(self.path, self.exp_name, 'config.json'), 'w') as f:
             json.dump(self.config, f, sort_keys=True, indent=4)
         return rmse_loss
+    
+    def plot_relations(self):
+        relations = self.config['relations_order']
+        logs = self.logs()
+        print(logs.keys())
+        nepoch = self.config['nepoch']
+        epochs = np.arange(nepoch)
+        # relations_result_dir = {}
+        for i, relation in enumerate(relations):
+            max_list = logs["train_epoch." + relation + "_max"]
+            min_list = logs["train_epoch." + relation + "_min"]
+            mean_list = logs["train_epoch." + relation + "_mean"]
+            plt.title(relation + ' change ')
+            plt.plot(epochs, max_list, label=relation + '_max')
+            plt.plot(epochs, min_list, label=relation+'_min')
+            plt.plot(epochs, mean_list, label=relation + '_mean')
+            plt.xlabel('epoch')
+            plt.legend()
+            plt.show()
 
+            # relations_result_dir[relation] = [max_list, min_list, mean_list]
+
+            
           
 class Printer():
     def __init__(self, folder):
@@ -330,9 +352,19 @@ def plot_pred_by_dir(pred_dir, data, start_time=0, title='Pred', dim=0):
 
 
 if __name__ == "__main__":
-    path = 'D:/Jupyter_Documents/ML-code/research_code/output/jar0426'
-    exp_name = 'v3-stnn_04-27-08-31-14'
+    # === Test ===
+
+
+    # --- test calculate_rmse_loss ---
+    # path = 'D:/Jupyter_Documents/ML-code/research_code/output/jar0426'
+    # exp_name = 'v3-stnn_04-27-08-31-14'
     # exp_name = 'v3-stnn_04-27-09-19-04'
+    # exp = Exp(exp_name, path)
+
+    # print(exp.config['score_true_confirmed'])
+    # print(exp.calculate_rmse_loss())
+    # --- test plot relation change ---
+    path = 'D:/Jupyter_Documents/ML-code/research_code/output/test'
+    exp_name = 'v2-stnn_04-27-11-32-30'
     exp = Exp(exp_name, path)
-    print(exp.config['score_true_confirmed'])
-    print(exp.calculate_rmse_loss())
+    exp.plot_relations()
