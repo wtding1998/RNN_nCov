@@ -106,7 +106,7 @@ def get_dir(outputdir):
     return os.path.abspath(os.path.join(os.getcwd(), "..", "output", outputdir))
 
 def get_time():
-    return datetime.datetime.now().strftime('%m-%d-%H-%M-%S')
+    return datetime.datetime.now().strftime('%m-%d-%H-%M-%S') + '_' + str(random.random())[3:7]
 
 def time_dir():
     di = {}
