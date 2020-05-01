@@ -177,13 +177,17 @@ def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0, rescaled_
     validation_data = test_data[:opt.validation_length]
     return opt, (train_data, test_data, validation_data), relations
 
-def get_keras_dataset(data_dir, disease_name, nt_train, seq_len, start_time=0, normalize='variance', time_datas=['confirmed']):
+def get_keras_dataset(data_dir, disease_name, nt_train, seq_len, start_time=0, normalize='variance', time_datas=['confirmed'], reduce=True):
     # get dataset
         # data_dir = 'data', disease_name = 'ncov_confirmed' 
     # return (nt, nx, nd) time series data
     opt = DotDict()
     data, opt.datas_order = get_time_data(data_dir, disease_name, start_time=start_time, time_datas=time_datas, use_torch=False)
     opt.nt, opt.nx, opt.nd = data.shape
+    opt.reduce = reduce
+    if reduce:
+        opt.nx = 1
+        data = data.sum(1)[:, np.newaxis,:]
     opt.normalize = normalize
     train_data = data[:nt_train]
     opt.mean = np.mean(train_data)
@@ -211,7 +215,10 @@ def get_keras_dataset(data_dir, disease_name, nt_train, seq_len, start_time=0, n
 
 if __name__ == "__main__":
     # print(get_time_data('data', 'ncov', 0).size())
-    print(get_keras_dataset('data', 'ncov_confirmed', 50, 2, start_time=3)[1].shape)
+    print(get_keras_dataset('data', 'jar_increase', 7, 2, start_time=3)[1][0])
+    print(get_keras_dataset('data', 'jar_increase', 7, 2, start_time=3)[1][1])
+    print(get_keras_dataset('data', 'jar_increase', 7, 2, start_time=3)[1][2])
+    print(get_keras_dataset('data', 'jar_increase', 7, 2, start_time=3)[1][3])
     # result
     # torch.Size([7, 3, 34, 3])
     # torch.Size([7, 34, 3])

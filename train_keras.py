@@ -26,7 +26,8 @@ p.add('--datadir', type=str, help='path to dataset', default='data')
 p.add('--dataset', type=str, help='dataset name', default='ncov_confirmed')
 p.add('--nt_train', type=int, help='time for training', default=50)
 p.add('--start_time', type=int, help='time for training', default=0)
-p.add('--increase', type=boolean_string, help='whether to use daily increase data', default=False)
+p.add('--increase', type=boolean_string, help='whether to use daily increase data', default=True)
+p.add('--reduce', type=boolean_string, help='whether to use daily increase data', default=True)
 
 # -- xp
 p.add('--outputdir', type=str, help='path to save xp', default='default')
@@ -36,7 +37,7 @@ p.add('--xp_auto', type=boolean_string, help='time', default=False)
 p.add('--xp_time', type=boolean_string, help='xp_time', default=True)
 p.add('--auto', type=boolean_string, help='dataset_model + time', default=False)
 # -- model
-p.add('--seq_length', type=int, help='sequence length', default=3)
+p.add('--seq_length', type=int, help='sequence length', default=5)
 p.add('--nhid', type=int, help='dynamic function hidden size', default=50)
 p.add('--nlayers', type=int, help='dynamic function num layers', default=2)
 p.add('--dropout', type=float, help='dropout rate', default=0.5)
@@ -73,7 +74,7 @@ np.random.seed(opt.manualSeed)
 if opt.increase:
     opt.dataset = opt.dataset + '_increase'
 
-setup, (train_input, train_output, test_input, test_data)= get_keras_dataset(opt.datadir, opt.dataset, opt.nt_train,opt.seq_length, opt.start_time)
+setup, (train_input, train_output, test_input, test_data)= get_keras_dataset(opt.datadir, opt.dataset, opt.nt_train,opt.seq_length, opt.start_time, opt.reduce)
 
 for k, v in setup.items():
     opt[k] = v
