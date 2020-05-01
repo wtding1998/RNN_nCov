@@ -1,4 +1,5 @@
 import os
+import shutil
 import random
 import json
 import datetime
@@ -177,8 +178,35 @@ class Logger_keras(object):
             json.dump(self.logs, f, sort_keys=True, indent=4)
         model.save(self.model_path)
         
+def get_new_add(dataset):
+    '''
+    Copy a dataset to dataset_add with time_data changeed into daily add
+    '''
+    # --- copy dir ---
+    data_path = os.path.join('data', dataset)
+    added_data_path = data_path + '_add'
+    if not os.path.exists(added_data_path):
+        shutil.copytree(data_path, added_data_path)
+
+    # --- replace timedata with daily add ---
+    time_data_dir = os.path.join(added_data_path, 'time_data')
+    data_files = os.listdir(time_data_dir)
+    for data_file in data_files:
+        data_path = os.path.join(time_data_dir, data_file)
+        data = np.genfromtxt(data_path, delimiter=',') # (nt, nx)
+        if len(data.shape) == 1:
+            data = data[..., np.newaxis]
+        daily_add_data = []
+        for i in range(data.shape[0]-1):
+            daily_add = data[i+1] - data[i]
+            daily_add_data.append(daily_add)
+        daily_add_data = np.stack(daily_add_data, axis=0)
+        print(data_file, 'converted')
+        np.savetxt(data_path, daily_add_data, delimiter=',')
+    return daily_add_data
 
 if __name__ == "__main__":
-    a = torch.ones(2, 3, 3).float()
-    b = torch.zeros(2, 3, 3).float()
-    print(copy_nonzero_weights(a))
+    # a = torch.ones(2, 3, 3).float()
+    # b = torch.zeros(2, 3, 3).float()
+    # print(copy_nonzero_weights(a))
+    print(get_new_add('test_rnn'))
