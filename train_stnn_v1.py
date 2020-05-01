@@ -355,7 +355,8 @@ def train(command=False):
         if opt.increase:
             np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'increase_' + data_kind + '.txt'), d_pred, delimiter=',')
         else:
-            np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred_' + data_kind + '.txt'), d_pred, delimiter=',')        opt['score_true_' + data_kind] = rmse_np(d_pred, true_test_data[:, :, i])
+            np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred_' + data_kind + '.txt'), d_pred, delimiter=',')
+        opt['score_true_' + data_kind] = rmse_np(d_pred, true_test_data[:, :, i])
         opt['score_' + data_kind] = rmse_np(x_pred[:, :, i], test_data[:, :, i])
     # save relations
     final_relations = model.get_relations()[:, 1:].detach().cpu().numpy()
