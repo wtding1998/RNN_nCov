@@ -177,25 +177,12 @@ def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0, rescaled_
     validation_data = test_data[:opt.validation_length]
     return opt, (train_data, test_data, validation_data), relations
 
-def get_keras_dataset(data_dir, disease_name, nt_train, seq_len, start_time=0, normalize='variance'):
+def get_keras_dataset(data_dir, disease_name, nt_train, seq_len, start_time=0, normalize='variance', time_datas=['confirmed']):
     # get dataset
         # data_dir = 'data', disease_name = 'ncov_confirmed' 
     # return (nt, nx, nd) time series data
-    time_data_dir = os.path.join(data_dir, disease_name, 'time_data')
-    time_datas = os.listdir(time_data_dir)
-    data = []
-    for time_data in time_datas:
-        data_path = os.path.join(time_data_dir, time_data)
-        new_data = np.genfromtxt(data_path, encoding='utf-8', delimiter=',')[start_time:][..., np.newaxis]
-        data.append(new_data)
-    if len(data) >= 2:
-        data = np.concatenate(data, axis=2).astype(np.float64)
-    else:
-        data = data[0].astype(np.float64)
-    # get option
     opt = DotDict()
-    if len(data.shape) == 2:
-        data = data[..., np.newaxis]
+    data, opt.datas_order = get_time_data(data_dir, disease_name, start_time=start_time, time_datas=time_datas, use_torch=False)
     opt.nt, opt.nx, opt.nd = data.shape
     opt.normalize = normalize
     train_data = data[:nt_train]

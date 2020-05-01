@@ -26,6 +26,8 @@ p.add('--datadir', type=str, help='path to dataset', default='data')
 p.add('--dataset', type=str, help='dataset name', default='ncov_confirmed')
 p.add('--nt_train', type=int, help='time for training', default=50)
 p.add('--start_time', type=int, help='time for training', default=0)
+p.add('--increase', type=boolean_string, help='whether to use daily increase data', default=False)
+
 # -- xp
 p.add('--outputdir', type=str, help='path to save xp', default='default')
 p.add('--xp', type=str, help='xp name', default='rnn')
@@ -67,6 +69,10 @@ np.random.seed(opt.manualSeed)
 # Data
 #######################################################################################################################
 # -- load data
+
+if opt.increase:
+    opt.dataset = opt.dataset + '_increase'
+
 setup, (train_input, train_output, test_input, test_data)= get_keras_dataset(opt.datadir, opt.dataset, opt.nt_train,opt.seq_length, opt.start_time)
 
 for k, v in setup.items():
@@ -179,7 +185,11 @@ with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f
     json.dump(opt, f, sort_keys=True, indent=4)
 
 logger.save(model)
-
-for i in range(opt.nd):
-    d_pred = pred[:,:, i]
-    np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred_' + str(i).zfill(3) +  '.txt'), d_pred, delimiter=',')
+if opt.increase:
+    for i, time_data in enumerate(opt.datas_order):
+        d_pred = pred[:,:, i]
+        np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'increase_' + opt.datas_order[i] +  '.txt'), d_pred, delimiter=',')
+else:
+    for i, time_data in enumerate(opt.datas_order):
+        d_pred = pred[:,:, i]
+        np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred_' + opt.datas_order[i] +  '.txt'), d_pred, delimiter=',')
