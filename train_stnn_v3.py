@@ -45,6 +45,7 @@ def train(command=False):
         p.add('--normalize_method', type=str, help='normalize method for relation', default='all')
         p.add('--relations', type=str, nargs='+', help='choose relations', default='all')
         p.add('--time_datas', type=str, nargs='+', help='choose time data', default='all')
+        p.add('--increase', type=boolean_string, help='whether to use daily increase data', default=False)
 
         # -- xp
         p.add('--outputdir', type=str, help='path to save xp', default='default')
@@ -141,6 +142,8 @@ def train(command=False):
 
     # if opt.dir_auto:
     #     opt.outputdir = opt.dataset + "_" + opt.mode 
+    if opt.increase:
+        opt.dataset = opt.dataset + '_increase'
     if opt.outputdir == 'default':
         opt.outputdir = opt.dataset + "_" + opt.mode
     opt.outputdir = get_dir(opt.outputdir)
@@ -361,7 +364,10 @@ def train(command=False):
     for i in range(opt.nd):
         d_pred =true_pred_data[:,:, i]
         data_kind = opt.datas_order[i]
-        np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred_' + data_kind + '.txt'), d_pred, delimiter=',')
+        if opt.increase:
+            np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'increase_' + data_kind + '.txt'), d_pred, delimiter=',')
+        else:
+            np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'pred_' + data_kind + '.txt'), d_pred, delimiter=',')        opt['score_true_' + data_kind] = rmse_np(d_pred, true_test_data[:, :, i])
         opt['score_true_' + data_kind] = rmse_np(d_pred, true_test_data[:, :, i])
         opt['score_' + data_kind] = rmse_np(x_pred[:, :, i], test_data[:, :, i])
     # save relations

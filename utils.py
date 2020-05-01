@@ -180,15 +180,15 @@ class Logger_keras(object):
         
 def get_new_add(dataset):
     '''
-    Copy a dataset to dataset_add with time_data changeed into daily add
+    Copy a dataset to dataset_add with time_data changeed into daily increase
     '''
     # --- copy dir ---
     data_path = os.path.join('data', dataset)
-    added_data_path = data_path + '_add'
+    added_data_path = data_path + '_increase'
     if not os.path.exists(added_data_path):
         shutil.copytree(data_path, added_data_path)
 
-    # --- replace timedata with daily add ---
+    # --- replace timedata with daily increase ---
     time_data_dir = os.path.join(added_data_path, 'time_data')
     data_files = os.listdir(time_data_dir)
     for data_file in data_files:
