@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from rnn_model import *
 from utils import normalize, DotDict, Logger, rmse, rmse_tensor, boolean_string, get_dir, get_time, next_dir, get_model, model_dir, rmse_np
 from stnn import SaptioTemporalNN
+from get_dataset import get_time_data
 
 
 def get_config(model_dir):
@@ -62,6 +63,14 @@ class Exp():
         self.path = path
         self.exp_name = exp_name
         self.config = get_config(os.path.join(self.path, self.exp_name))
+        if 'increase' in self.config and self.config['increase']:
+            self.increase = True
+            self.get_pred_by_increase()
+        else:
+            self.increase = False
+        self.calculate_rmse_loss()
+        with open(os.path.join(self.path, self.exp_name, 'config.json'), 'w') as f:
+            json.dump(self.config, f, sort_keys=True, indent=4)
 
     def model_name(self):
         folder_name = os.path.basename(os.path.normpath(self.path))
@@ -101,7 +110,7 @@ class Exp():
         model.load_state_dict(torch.load(os.path.join(self.path, self.exp_name, 'model.pt')))
         return model
     
-    def pred(self, test_input=None):
+    def pred(self, increase=False):
         '''
         return pred with (nt, nx)
         if pred_reduce == True, return (nt)
@@ -110,8 +119,12 @@ class Exp():
         files = os.listdir(pa)
         # ! consider 3-dims output
         pred = []
+        if increase:
+            prefix = 'increase'
+        else:
+            prefix = 'pred'
         for file_name in files:
-            if 'pred' in file_name:
+            if prefix in file_name:
                 new_pred = np.genfromtxt(os.path.join(self.path, self.exp_name, file_name), delimiter=',')
                 if len(new_pred.shape) == 1:
                     new_pred = new_pred[...,np.newaxis]
@@ -120,7 +133,7 @@ class Exp():
         if np.isnan(pred).any():
             pred = []
             for file_name in files:
-                if 'pred' in file_name:
+                if prefix in file_name:
                     new_pred = np.genfromtxt(os.path.join(self.path, self.exp_name, file_name), delimiter=' ')
                     if len(new_pred.shape) == 1:
                         new_pred = new_pred[...,np.newaxis]
@@ -176,15 +189,15 @@ class Exp():
             self.config['loss_' + data_kind] = rmse_loss / self.config['std']
         if self.config['normalize'] == 'min_max':
             self.config['loss_' + data_kind] = rmse_loss / (self.config['max'] - self.config['min'])
-        # --- add loss to config
-        with open(os.path.join(self.path, self.exp_name, 'config.json'), 'w') as f:
-            json.dump(self.config, f, sort_keys=True, indent=4)
+        if self.config['model'] == 'v3':
+            self.config['model'] = 'v1'
+        if self.config['mode'] == None:
+            self.config['mode'] = 'default'
         return rmse_loss
     
     def plot_relations(self):
         relations = self.config['relations_order']
         logs = self.logs()
-        print(logs.keys())
         nepoch = self.config['nepoch']
         epochs = np.arange(nepoch)
         # relations_result_dir = {}
@@ -201,6 +214,27 @@ class Exp():
             plt.show()
 
             # relations_result_dir[relation] = [max_list, min_list, mean_list]
+    def get_pred_by_increase(self):
+        '''
+        get pred_data by increase_data and data
+        '''
+        # --- calculate prediction ---
+        print('generate prediction for', self.exp_name)
+        data, datas_name = get_time_data('data', self.config['dataset'], start_time=self.config['start_time'], use_torch=False) 
+        increase_data = self.pred(increase=True)
+        nt_pred = increase_data.shape[0]
+        start_data = data[-nt_pred-1]
+        pred_data = np.zeros(increase_data.shape)
+        pred_data[0] = start_data + increase_data[0]
+        for t in range(nt_pred-1):
+            pred_data[t + 1] = pred_data[t] + increase_data[t + 1]
+        # --- save prediction ---
+        for i, data_name in enumerate(datas_name):
+            np.savetxt(os.path.join(self.path, self.exp_name, 'pred_'+data_name+'.txt'), pred_data[:,:,i], delimiter=',')
+        # --- change nt_train in config
+        self.config['nt_train'] = self.config['nt'] - nt_pred
+        return pred_data
+
 
             
           
@@ -363,8 +397,15 @@ if __name__ == "__main__":
 
     # print(exp.config['score_true_confirmed'])
     # print(exp.calculate_rmse_loss())
+
     # --- test plot relation change ---
+    # path = 'D:/Jupyter_Documents/ML-code/research_code/output/test'
+    # exp_name = 'v2-stnn_04-27-11-32-30'
+    # exp = Exp(exp_name, path)
+    # exp.plot_relations()
+
+    # --- test increase data ---
     path = 'D:/Jupyter_Documents/ML-code/research_code/output/test'
-    exp_name = 'v2-stnn_04-27-11-32-30'
+    exp_name = 'v3-stnn_05-01-10-44-08_9851'
     exp = Exp(exp_name, path)
-    exp.plot_relations()
+

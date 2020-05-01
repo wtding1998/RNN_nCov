@@ -6,7 +6,7 @@ import torch
 from utils import DotDict, normalize, normalize_all_row
 
 
-def get_time_data(data_dir, disease_name, start_time=0, time_datas='all'):
+def get_time_data(data_dir, disease_name, start_time=0, time_datas='all', use_torch=True):
     # data_dir = 'data', disease_name = 'ncov' 
     # return (nt, nx, nd) time series data
     time_data_dir = os.path.join(data_dir, disease_name, 'time_data')
@@ -18,12 +18,14 @@ def get_time_data(data_dir, disease_name, start_time=0, time_datas='all'):
     for time_data in time_datas:
         data_path = os.path.join(time_data_dir, time_data)
         new_data = np.genfromtxt(data_path, encoding='utf-8', delimiter=',')
-        new_data = torch.tensor(new_data)
-        if len(new_data.size()) == 1:
-            new_data = new_data.unsqueeze(1)
+        if len(new_data.shape) == 1:
+            new_data = new_data[..., np.newaxis]
         data.append(new_data)
-
-    return torch.stack(data, dim=2).float()[start_time:], [data_name.replace('.csv', '') for data_name in time_datas]
+    data = np.stack(data, axis=2)[start_time:]
+    if use_torch:
+        return torch.tensor(data).float(), [data_name.replace('.csv', '') for data_name in time_datas]
+    else:
+        return data.astype(np.float64), [data_name.replace('.csv', '') for data_name in time_datas]
 
 def get_multi_relations(data_dir, disease_name, k, start_time=0):
     '''
