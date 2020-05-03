@@ -1416,7 +1416,7 @@ class SaptioTemporalNN_input(nn.Module):
         self.mode = mode
         # kernel
         device = relations.device
-        if mode is None or mode == 'refine':
+        if mode is None or mode == 'default' or mode == 'refine':
             self.relations = torch.cat(
                 (torch.eye(nx).to(device).unsqueeze(1), relations), 1)
         elif mode == 'discover':
@@ -1478,7 +1478,7 @@ class SaptioTemporalNN_input(nn.Module):
         #     self.rel_weights.data.fill_(1 / self.nx)
 
     def get_relations(self):
-        if self.mode is None:
+        if self.mode is None or self.mode == 'default':
             return self.relations
         else:
             weights = F.hardtanh(self.rel_weights, 0, 1)
@@ -1581,7 +1581,7 @@ class SaptioTemporalNN_concat(nn.Module):
         self.mode = mode
         # kernel
         device = relations.device
-        if mode is None or mode == 'refine':
+        if mode is None or mode == 'default' or mode == 'refine':
             self.relations = torch.cat(
                 (torch.eye(nx).to(device).unsqueeze(1), relations), 1)
         elif mode == 'discover':
@@ -1638,7 +1638,7 @@ class SaptioTemporalNN_concat(nn.Module):
         #     self.rel_weights.data.fill_(1 / self.nx)
 
     def get_relations(self):
-        if self.mode is None:
+        if self.mode is None or self.mode =='default':
             return self.relations
         else:
             weights = F.hardtanh(self.rel_weights, 0, 1)
@@ -1737,7 +1737,7 @@ class SaptioTemporalNN_input_simple(nn.Module):
         # kernel
         # self.activation = torch.tanh if activation == 'tanh' else identity if activation == 'identity' else None
         device = relations.device
-        if mode is None or mode == 'refine':
+        if mode is None or mode == 'refine' or mode == 'default':
             self.relations = torch.cat(
                 (torch.eye(nx).to(device).unsqueeze(1), relations), 1)
         elif mode == 'discover':
@@ -1795,7 +1795,7 @@ class SaptioTemporalNN_input_simple(nn.Module):
         #     self.rel_weights.data.fill_(1 / self.nx)
 
     def get_relations(self):
-        if self.mode is None:
+        if self.mode is None or self.mode == 'default':
             return self.relations
         else:
             weights = F.hardtanh(self.rel_weights, 0, 1)
@@ -1883,7 +1883,7 @@ class SaptioTemporalNN_v0(nn.Module):
         # kernel
         # self.activation = torch.tanh if activation == 'tanh' else identity if activation == 'identity' else None
         device = relations.device
-        if mode is None or mode == 'refine':
+        if mode is None or mode == 'default' or mode == 'refine':
             self.relations = torch.cat(
                 (torch.eye(nx).to(device).unsqueeze(1), relations), 1)
         elif mode == 'discover':
@@ -1939,7 +1939,7 @@ class SaptioTemporalNN_v0(nn.Module):
         #     self.rel_weights.data.fill_(1 / self.nx)
 
     def get_relations(self):
-        if self.mode is None:
+        if self.mode is None or self.mode == 'default':
             return self.relations
         else:
             weights = F.hardtanh(self.rel_weights, 0, 1)
@@ -1987,6 +1987,7 @@ class SaptioTemporalNN_v0(nn.Module):
             z_gen.append(z)
         z_gen = torch.stack(z_gen)
         x_gen = self.decode_z(z_gen)
+        print(z_gen)
         return x_gen, z_gen
 
     def factors_parameters(self):

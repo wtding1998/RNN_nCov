@@ -6,8 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from rnn_model import *
 from utils import normalize, DotDict, Logger, rmse, rmse_tensor, boolean_string, get_dir, get_time, next_dir, get_model, model_dir, rmse_np
-from stnn import SaptioTemporalNN
-from get_dataset import get_time_data
+from stnn import SaptioTemporalNN_v0, SaptioTemporalNN_concat, SaptioTemporalNN_input, SaptioTemporalNN_input_simple
+from get_dataset import get_time_data, get_relations
 
 
 def get_config(model_dir):
@@ -62,34 +62,27 @@ class Exp():
     def __init__(self, exp_name, path):
         self.path = path
         self.exp_name = exp_name
+        self.model_name = exp_name.split('-')[0]
         self.config = get_config(os.path.join(self.path, self.exp_name))
+        self.nt = self.config['nt']
+        self.nx = self.config['nx']
+        self.nt_train = self.config['nt_train']
         if 'increase' in self.config and self.config['increase']:
             self.increase = True
             self.get_pred_by_increase()
         else:
             self.increase = False
-        self.calculate_rmse_loss()
+        # self.calculate_rmse_loss()
         with open(os.path.join(self.path, self.exp_name, 'config.json'), 'w') as f:
             json.dump(self.config, f, sort_keys=True, indent=4)
 
-    def model_name(self):
-        folder_name = os.path.basename(os.path.normpath(self.path))
-        return folder_name.split('_')[1]
 
     def dataset_name(self):
         folder_name = os.path.basename(os.path.normpath(self.path))
         return folder_name.split('_')[0]
 
-    def get_relations(self):
-        dataset = self.dataset_name()
-        if dataset == "heat":
-            data_path = os.path.abspath(os.path.join(self.path, "..", "..", "heat_STNN", "data"))
-            relations = np.genfromtxt(os.path.join(data_path, "heat_relations.csv"), delimiter=',', encoding='utf-8-sig')
-        else:
-            data_path = os.path.abspath(os.path.join(self.path, "..", "..", "disease_STNN", "data"))
-            relations = np.genfromtxt(os.path.join(data_path, dataset+"_relations.csv"), delimiter=',', encoding='utf-8-sig')
-        relations = torch.tensor(relations).float()
-        relations = normalize(relations).unsqueeze(1)
+    def relations(self):
+        relations, _ = get_relations(self.config['datadir'], self.config['dataset'], self.config['khop'], self.config['normalize_method'], self.config['relations_order'])
         return relations
         
     def logs(self):
@@ -99,17 +92,35 @@ class Exp():
         return self.logs()['train_loss.epoch']
 
     def model(self):
-        if self.model_name() == 'LSTM':
+        if self.model_name == 'LSTM':
             model = LSTMNet(self.config['nx'], self.config['nhid'], self.config['nlayers'], self.config['nx'], self.config['seq_length'])
-        if self.model_name() == 'GRU':
+        if self.model_name == 'GRU':
             model = GRUNet(self.config['nx'], self.config['nhid'], self.config['nlayers'], self.config['nx'], self.config['seq_length'])
-        else:
-            model = SaptioTemporalNN(self.get_relations(), self.config['nx'], self.config['checkpoint_interval'], 1, self.config['nz'], self.config['mode'], self.config['nhid'],
-                             self.config['nlayers'], self.config['dropout_f'], self.config['dropout_d'],
-                             self.config['activation'], self.config['periode'])
+        if self.model_name == 'ori':
+            model = SaptioTemporalNN_v0(self.relations(), self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],
+                        self.config['dropout_f'], self.config['dropout_d'], self.config['activation'], self.config['periode'])
+        if self.model_name == 'v1':
+            model = SaptioTemporalNN_concat(self.relations(), self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],
+                        self.config['dropout_f'], self.config['dropout_d'], self.config['activation'], self.config['periode'])
+        if self.model_name == 'v2':
+            model = SaptioTemporalNN_input(self.relations(), self.data_torch()[:self.config['nt_train']], self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],
+                        self.config['dropout_f'], self.config['dropout_d'], self.config['activation'], self.config['periode'], self.config['simple_dec'])
+        if self.model_name == 'v3':
+            model = SaptioTemporalNN_input_simple(self.relations(), self.data_torch()[:self.config['nt_train']], self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],
+                        self.config['dropout_f'], self.config['dropout_d'], self.config['activation'], self.config['periode'])
+
         model.load_state_dict(torch.load(os.path.join(self.path, self.exp_name, 'model.pt')))
         return model
-    
+
+    def data_torch(self):
+        data, _ = get_time_data(self.config['datadir'], self.config['dataset'], self.config['start_time'], self.config['datas_order'])
+        return data
+
+    def data_np(self):
+        data, _ = get_time_data(self.config['datadir'], self.config['dataset'], self.config['start_time'], self.config['datas_order'], use_torch=False)
+        return data
+
+
     def pred(self, increase=False):
         '''
         return pred with (nt, nx)
@@ -145,24 +156,10 @@ class Exp():
         '''
         Calculate the data_loss of exp
         '''
-        dataset_name = self.config['dataset']
         nd = self.config['nd']
         nx = self.config['nx']
-        time_datas = self.config['time_datas']
         # --- get test data ---
-        time_data_dir = os.path.abspath(os.path.join('data', dataset_name, 'time_data'))
-        if not isinstance(time_datas, list):
-            time_datas = os.listdir(time_data_dir)
-        else:
-            time_datas = [data_name+'.csv' for data_name in time_datas]
-        data = []
-        for time_data in time_datas:
-            data_path = os.path.join(time_data_dir, time_data)
-            new_data = np.genfromtxt(data_path, encoding='utf-8', delimiter=',')
-            if len(new_data.shape) == 1:
-                new_data.shape = (-1, 1)
-            data.append(new_data)
-        data = np.stack(data, axis=2)
+        data = self.data_np()
         # --- get prediction ---
         pred_data = self.pred()
         nt_pred = pred_data.shape[0]
@@ -189,8 +186,8 @@ class Exp():
             self.config['loss_' + data_kind] = rmse_loss / self.config['std']
         if self.config['normalize'] == 'min_max':
             self.config['loss_' + data_kind] = rmse_loss / (self.config['max'] - self.config['min'])
-        if self.config['model'] == 'v3':
-            self.config['model'] = 'v1'
+        # if self.config['model'] == 'v3':
+        #     self.config['model'] = 'v1'
         if self.config['mode'] == None:
             self.config['mode'] = 'default'
         return rmse_loss
@@ -235,9 +232,37 @@ class Exp():
         self.config['nt_train'] = self.config['nt'] - nt_pred
         return pred_data
 
+    def train_pred(self, pred_test=False):
+        '''
+        get the pred for the train_time
+        '''
+        model = self.model()
+        factors = model.factors
+        train_pred = []
+        for i in range(self.nt_train):
+            train_pred.append(model.decode_z(factors[i]))
+        train_pred = torch.stack(train_pred, dim=0)
 
-            
-          
+        return self.rescaled(train_pred.detach().numpy())
+    
+    def rescaled(self, data):
+        '''
+        convert the scaled data into original scale
+        '''
+        if self.config['normalize'] == 'variance':
+            true_data = data * self.config['std'] + self.config['mean']
+        if self.config['normalize'] == 'min_max':
+            true_data = data * (self.config['max'] - self.config['min']) + self.config['mean']
+        return true_data
+
+    def generate(self, nsteps, reduce=False, axis=0):
+        model = self.model()
+        x, z = model.generate(nsteps)
+        x = x[:, :, axis].detach().numpy()
+        z = z.detach().numpy()
+        # x = x.sum(1)
+        return self.rescaled(x), z
+
 class Printer():
     def __init__(self, folder):
         self.folder = folder
@@ -351,35 +376,57 @@ def get_exp_name(df, choosen_values=['used_model']):
         index_dir[model_index] = df.index[i]
     return index_dir
 
-def get_pred(exp_dir, folder):
+def get_pred(exp_dir, folder, train=False):
     pred_dir = {}
     for model_name, exp_name in exp_dir.items():
-        pred_dir[model_name] = Exp(exp_name, folder).pred()
-    return pred_dir
+        exp = Exp(exp_name, folder)
+        pred_data = exp.pred()
+        if train:
+            train_pred = exp.train_pred()
+            pred_data = np.concatenate([train_pred, pred_data], axis=0)
+        pred_dir[model_name] = pred_data
+    data = exp.data_np()
+    return pred_dir, data
 
-def plot_pred_by_dir(pred_dir, data, start_time=0, title='Pred', dim=0):
+def plot_pred_by_dir(exp_dir, folder, line_time=0, title='Pred', dim=0, train=False):
     '''
     pred : {'model_name': (nt_pred, nx, nd)}
     data : (nt, nx, nd)
     '''
-    nt_pred = pred_dir[list(pred_dir.keys())[0]].shape[0]
+    pred_dir = {}
+    loss_dir = {}
+    for model_name, exp_name in exp_dir.items():
+        exp = Exp(exp_name, folder)
+        pred_data = exp.pred()
+        nt_pred = pred_data.shape[0]
+        if train:
+            train_pred = exp.train_pred()
+            pred_data = np.concatenate([train_pred, pred_data], axis=0)
+        pred_dir[model_name] = pred_data
+    data = exp.data_np()
     data_sum = data[:,:, dim].sum(1)
     plotted_dir = {}
     for model_name, pred in pred_dir.items():
         pred_sum = pred[:, :, dim].sum(1) # (nt_pred)
-        pred_plotted = np.concatenate([data_sum[-nt_pred - start_time: - nt_pred], pred_sum])
-        plotted_dir[model_name] = pred_plotted
-    
-    data_plotted = data_sum[-nt_pred - start_time:]
-    x_axis = np.arange(nt_pred + start_time)
+        if not train:
+            pred_sum = np.concatenate([data_sum[-nt_pred - line_time: - nt_pred], pred_sum])
+        plotted_dir[model_name] = pred_sum
+    if not train:
+        data_sum = data_sum[-nt_pred - line_time:]
+        x_axis = np.arange(nt_pred + line_time)
+    else:
+        nt = data_sum.shape[0]
+        x_axis = np.arange(nt)
+        line_time = nt - nt_pred -1
     # plt.rcParams['font.sans-serif'] = ['KaiTi'] # 指定默认字体
     # plt.rcParams['axes.unicode_minus'] = False
+
     fig = plt.figure()
     plt.grid()
-    for model_name, pred_plotted in plotted_dir.items():
-        plt.plot(x_axis, pred_plotted, label=model_name, marker='*', linestyle='--')
-    plt.plot(x_axis, data_plotted, label='ground_truth', marker='o')
-    plt.axvline(x=start_time,ls="--")
+    for model_name, pred_sum in plotted_dir.items():
+        plt.plot(x_axis, pred_sum, label=model_name, marker='*', linestyle='--')
+    plt.plot(x_axis, data_sum, label='ground_truth', marker='o')
+    plt.axvline(x=line_time,ls="--")
     plt.legend()
     plt.title(title)
     return plotted_dir
@@ -407,5 +454,9 @@ if __name__ == "__main__":
     # --- test increase data ---
     path = 'D:/Jupyter_Documents/ML-code/research_code/output/test'
     exp_name = 'v3-stnn_05-01-10-44-08_9851'
-    exp = Exp(exp_name, path)
-
+    exp_dir = {'test': exp_name}
+    # exp_name = 'v2-stnn_05-03-00-05-59_0251'
+    # exp = Exp(exp_name, path)
+    # print(exp.plot_train_times().shape)
+    pred_dir,data = get_pred(exp_dir, path, train=True)
+    plot_pred_by_dir(pred_dir, data)

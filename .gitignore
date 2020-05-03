@@ -18,3 +18,4 @@ keras_model.h5
 pred.txt
 test_dropout.py
 others.ipynb
+mytest.py
