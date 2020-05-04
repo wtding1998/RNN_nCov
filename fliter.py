@@ -1,9 +1,10 @@
 import os
 import shutil
+from result import *
 
 source_dir = '../output'
 target_dir = '../output_result'
-outputdirs = ['japan', 'feb0416', 'jar0416', 'mar0416']
+outputdirs = ['japan']
 
 if not os.path.exists(target_dir):
     os.makedirs(target_dir)
@@ -15,6 +16,7 @@ for dir_name in outputdirs:
     xps = os.listdir(outputdir)
     for xp in xps:
         xp_path = os.path.join(outputdir, xp)
+        exp = Exp(xp, outputdir)
         target_path = os.path.join(targetdir, xp)
         if not os.path.exists(target_path):
             os.makedirs(target_path)

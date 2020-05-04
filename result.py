@@ -73,6 +73,7 @@ class Exp():
         else:
             self.increase = False
         # self.calculate_rmse_loss()
+        self.config['sum_loss'] = self.pred_loss()
         with open(os.path.join(self.path, self.exp_name, 'config.json'), 'w') as f:
             json.dump(self.config, f, sort_keys=True, indent=4)
 
@@ -113,13 +114,29 @@ class Exp():
         return model
 
     def data_torch(self):
-        data, _ = get_time_data(self.config['datadir'], self.config['dataset'], self.config['start_time'], self.config['datas_order'])
+        if 'datas_oreder' in self.config.keys():
+            data, _ = get_time_data(self.config['datadir'], self.config['dataset'], self.config['start_time'], self.config['datas_order'], use_torch=True)
+        else:
+            data, _ = get_time_data(self.config['datadir'], self.config['dataset'], self.config['start_time'], 'all', use_torch=True)
         return data
 
     def data_np(self):
-        data, _ = get_time_data(self.config['datadir'], self.config['dataset'], self.config['start_time'], self.config['datas_order'], use_torch=False)
+        if 'datas_oreder' in self.config.keys():
+            data, _ = get_time_data(self.config['datadir'], self.config['dataset'], self.config['start_time'], self.config['datas_order'], use_torch=False)
+        else:
+            data, _ = get_time_data(self.config['datadir'], self.config['dataset'], self.config['start_time'], 'all', use_torch=False)
         return data
-
+    
+    def pred_loss(self, reduce=True):
+        data = self.data_np()
+        test_data = data[self.nt_train:, :, 0]
+        pred = self.pred()[:,:, 0]
+        if reduce:
+            test_data = test_data.sum(1)
+            pred = pred.sum(1)
+            return np.linalg.norm(test_data - pred) / (self.nt - self.nt_train)
+        else:
+            return rmse_np(test_data, pred)
 
     def pred(self, increase=False):
         '''
@@ -429,7 +446,7 @@ def plot_pred_by_dir(exp_dir, folder, line_time=0, title='Pred', dim=0, train=Fa
     plt.axvline(x=line_time,ls="--")
     plt.legend()
     plt.title(title)
-    return plotted_dir
+    return plotted_dir, data_sum
 
 
 if __name__ == "__main__":
