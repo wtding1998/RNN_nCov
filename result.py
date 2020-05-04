@@ -114,15 +114,15 @@ class Exp():
         return model
 
     def data_torch(self):
-        if 'datas_oreder' in self.config.keys():
-            data, _ = get_time_data(self.config['datadir'], self.config['dataset'], self.config['start_time'], self.config['datas_order'], use_torch=True)
+        if 'time_datas' in self.config.keys():
+            data, _ = get_time_data(self.config['datadir'], self.config['dataset'], self.config['start_time'], self.config['time_datas'], use_torch=True)
         else:
             data, _ = get_time_data(self.config['datadir'], self.config['dataset'], self.config['start_time'], 'all', use_torch=True)
         return data
 
     def data_np(self):
-        if 'datas_oreder' in self.config.keys():
-            data, _ = get_time_data(self.config['datadir'], self.config['dataset'], self.config['start_time'], self.config['datas_order'], use_torch=False)
+        if 'time_datas' in self.config.keys():
+            data, _ = get_time_data(self.config['datadir'], self.config['dataset'], self.config['start_time'], self.config['time_datas'], use_torch=False)
         else:
             data, _ = get_time_data(self.config['datadir'], self.config['dataset'], self.config['start_time'], 'all', use_torch=False)
         return data
@@ -234,7 +234,7 @@ class Exp():
         '''
         # --- calculate prediction ---
         print('generate prediction for', self.exp_name)
-        data, datas_name = get_time_data('data', self.config['dataset'], start_time=self.config['start_time'], use_torch=False) 
+        data, datas_name = get_time_data('data', self.config['dataset'], start_time=self.config['start_time'], time_datas=self.config['time_datas'], use_torch=False) 
         increase_data = self.pred(increase=True)
         nt_pred = increase_data.shape[0]
         start_data = data[-nt_pred-1]
