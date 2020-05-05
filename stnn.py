@@ -1510,7 +1510,7 @@ class SaptioTemporalNN_input(nn.Module):
         state_next = self.dynamic(state_context)
         return self.activation(state_next).view(-1, self.nx, self.nz)
 
-    def decode_state(self, state):
+    def decode_z(self, state):
         '''
         state : (nt, nx, nz)
         x_rec : (nt, nx, nd)
@@ -1522,7 +1522,7 @@ class SaptioTemporalNN_input(nn.Module):
         '''
         t_idx : [t1, t2, ...]
         '''
-        return self.decode_state(self.drop(self.factors[t_idx]))
+        return self.decode_z(self.drop(self.factors[t_idx]))
 
     def dyn_closure(self, t_idx):
         '''
@@ -1541,7 +1541,7 @@ class SaptioTemporalNN_input(nn.Module):
         rec_gen = []
         for t in range(nsteps):
             final_state = self.update_state(final_state, final_input)
-            final_input = self.decode_state(final_state)
+            final_input = self.decode_z(final_state)
             state_gen.append(final_state.squeeze(0))
             rec_gen.append(final_input.squeeze(0))
         state_gen = torch.stack(state_gen)
@@ -1667,7 +1667,7 @@ class SaptioTemporalNN_concat(nn.Module):
         state_next = self.dynamic(state_context)
         return self.activation(state_next).view(-1, self.nx, self.nz)
 
-    def decode_state(self, state):
+    def decode_z(self, state):
         '''
         state : (nt, nx, nz)
         x_rec : (nt, nx, nd)
@@ -1679,7 +1679,7 @@ class SaptioTemporalNN_concat(nn.Module):
         '''
         t_idx : [t1, t2, ...]
         '''
-        return self.decode_state(self.drop(self.factors[t_idx]))
+        return self.decode_z(self.drop(self.factors[t_idx]))
 
     def dyn_closure(self, t_idx):
         '''
@@ -1698,7 +1698,7 @@ class SaptioTemporalNN_concat(nn.Module):
         rec_gen = []
         for t in range(nsteps):
             final_state = self.update_state(final_state)
-            final_input = self.decode_state(final_state)
+            final_input = self.decode_z(final_state)
             state_gen.append(final_state.squeeze(0))
             rec_gen.append(final_input.squeeze(0))
         state_gen = torch.stack(state_gen)

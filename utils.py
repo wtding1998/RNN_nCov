@@ -16,6 +16,10 @@ def rmse(x_pred, x_target, reduce=True):
         mse =  mse.unsqueeze(0)
     return mse
 
+def rmse_sum_confirmed(x_pred, x_target):
+    mse = torch.norm(x_pred.sum(1) - x_target.sum(1)).item()
+    return mse
+
 def rmse_np(x_pred, x_target, dim=2):
     '''
     (nt, nx)

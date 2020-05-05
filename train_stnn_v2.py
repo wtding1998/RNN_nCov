@@ -26,7 +26,7 @@ import torch.backends.cudnn as cudnn
 
 
 from get_dataset import get_stnn_data
-from utils import DotDict, Logger, rmse, boolean_string, get_dir, get_time, time_dir, rmse_np
+from utils import DotDict, Logger, rmse, boolean_string, get_dir, get_time, time_dir, rmse_np, rmse_sum_confirmed
 from stnn import SaptioTemporalNN_input
 
 def train(command=False):
@@ -40,6 +40,7 @@ def train(command=False):
         p.add('--dataset', type=str, help='dataset name', default='ncov_confirmed')
         p.add('--nt_train', type=int, help='time for training', default=50)
         p.add('--validation_length', type=int, help='validation/train', default=1)
+        p.add('--validation_method', type=str, help='sum | torch', default='torch')
         p.add('--start_time', type=int, help='start time for data', default=0)
         p.add('--rescaled', type=str, help='rescaled method', default='d')
         p.add('--normalize_method', type=str, help='normalize method for relation', default='all')
@@ -230,6 +231,7 @@ def train(command=False):
     #######################################################################################################################
     lr = opt.lr
     opt.mintest = 1000.0
+    opt.minepoch = 0
     if command:
         pb = trange(opt.nepoch)
     else:
@@ -306,17 +308,21 @@ def train(command=False):
             model.eval()
             with torch.no_grad():
                 x_pred, _ = model.generate(opt.validation_length)
-                score = rmse(x_pred, validation_data)
+                if opt.validation_method == 'torch':
+                    opt.val_score = rmse(x_pred, validation_data)
+                else:
+                    opt.val_score = rmse_sum_confirmed(x_pred, validation_data) / opt.validation_length
             if command:
-                pb.set_postfix(loss=logs_train['train_loss'], test=score)
+                pb.set_postfix(loss=logs_train['train_loss'], test=opt.val_score)
             else:
-                print(e, 'loss=', logs_train['train_loss'], 'test=', score)
-            logger.log('test_epoch.rmse', score)
-            if opt.mintest > score:
-                opt.mintest = score
+                print(e, 'loss=', logs_train['train_loss'], 'test=', opt.val_score)
+            logger.log('test_epoch.rmse', opt.val_score)
+            if opt.mintest > opt.val_score:
+                opt.mintest = opt.val_score
+                opt.minepoch = e
                 # schedule lr
-            if opt.patience > 0 and score < opt.sch_bound:
-                lr_scheduler.step(score)
+            if opt.patience > 0 and opt.val_score < opt.sch_bound:
+                lr_scheduler.step(opt.val_score)
             lr = optimizer.param_groups[0]['lr']
             if lr <= 1e-5:
                 break
@@ -373,7 +379,8 @@ def train(command=False):
     with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
         json.dump(opt, f, sort_keys=True, indent=4)
     logger.save(model)
-
+    print()
+    print(opt.xp)
 
 if __name__ == "__main__":
     train(True)

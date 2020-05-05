@@ -5,7 +5,7 @@ import pandas
 import numpy as np
 import matplotlib.pyplot as plt
 from rnn_model import *
-from utils import normalize, DotDict, Logger, rmse, rmse_tensor, boolean_string, get_dir, get_time, next_dir, get_model, model_dir, rmse_np
+from utils import normalize, DotDict, Logger, rmse, rmse_tensor, boolean_string, get_dir, get_time, next_dir, get_model, model_dir, rmse_np, rmse_np_like_torch
 from stnn import SaptioTemporalNN_v0, SaptioTemporalNN_concat, SaptioTemporalNN_input, SaptioTemporalNN_input_simple
 from get_dataset import get_time_data, get_relations
 
@@ -66,6 +66,7 @@ class Exp():
         self.config = get_config(os.path.join(self.path, self.exp_name))
         self.nt = self.config['nt']
         self.nx = self.config['nx']
+        self.nz = self.config['nz']
         self.nt_train = self.config['nt_train']
         if 'increase' in self.config and self.config['increase']:
             self.increase = True
@@ -209,13 +210,30 @@ class Exp():
             self.config['mode'] = 'default'
         return rmse_loss
 
-    def validation_loss(self):
+    def validation_loss(self, torch_like=False):
         # --- validation data ---
         data = self.data_np()
         validation_length = self.config['validation_length']
         validation_data = data[self.nt_train:self.nt_train + validation_length]
         pred = self.pred()[:validation_length]
-        return validation_data, pred
+        if torch_like:
+            loss = rmse_np_like_torch(validation_data, pred) / self.config['std']
+        else:
+            loss = np.linalg.norm(validation_data.sum(1) - pred.sum(1)) / validation_length
+        return loss
+
+    def draw_loss(self, ylim1=0, ylim2=10):
+        log = self.logs()
+        test_loss = log['test_epoch.rmse']
+        dyn_loss = log['train_epoch.loss_dyn']
+        dec_loss = log['train_epoch.mse_dec']
+        x = np.arange(log['epoch'])
+        plt.plot(x, test_loss, label='test')
+        plt.plot(x, dyn_loss, label='dyn')
+        plt.plot(x, dec_loss, label='dec')
+        plt.legend()
+        plt.ylim(ylim1, ylim2)
+        
     
     def plot_relations(self):
         relations = self.config['relations_order']
@@ -267,7 +285,6 @@ class Exp():
         for i in range(self.nt_train):
             train_pred.append(model.decode_z(factors[i]))
         train_pred = torch.stack(train_pred, dim=0)
-
         return self.rescaled(train_pred.detach().numpy())
     
     def rescaled(self, data):
@@ -434,6 +451,7 @@ def plot_pred_by_dir(exp_dir, folder, line_time=0, title='Pred', dim=0, train=Fa
         nt_pred = pred_data.shape[0]
         if train:
             train_pred = exp.train_pred()
+            train_pred = np.reshape(train_pred, (-1, pred_data.shape[1], pred_data.shape[2]))
             pred_data = np.concatenate([train_pred, pred_data], axis=0)
         pred_dir[model_name] = pred_data
     data = exp.data_np()
@@ -457,6 +475,7 @@ def plot_pred_by_dir(exp_dir, folder, line_time=0, title='Pred', dim=0, train=Fa
     fig = plt.figure()
     plt.grid()
     for model_name, pred_sum in plotted_dir.items():
+        print(np.linalg.norm(pred_sum - data_sum) / nt_pred)
         plt.plot(x_axis, pred_sum, label=model_name, marker='*', linestyle='--')
     plt.plot(x_axis, data_sum, label='ground_truth', marker='o')
     plt.axvline(x=line_time,ls="--")
