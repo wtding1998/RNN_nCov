@@ -38,7 +38,7 @@ def train(command=False):
         p.add('--datadir', type=str, help='path to dataset', default='data')
         p.add('--dataset', type=str, help='dataset name', default='ncov_confirmed')
         p.add('--nt_train', type=int, help='time for training', default=50)
-        p.add('--validation_ratio', type=float, help='validation/train', default=0.1)
+        p.add('--validation_length', type=int, help='validation/train', default=1)
         p.add('--start_time', type=int, help='start time for data', default=0)
         p.add('--rescaled', type=str, help='rescaled method', default='d')
         p.add('--normalize_method', type=str, help='normalize method for relation', default='all')
@@ -89,6 +89,7 @@ def train(command=False):
         p.add('--manualSeed', type=int, help='manual seed')
         # -- logs
         p.add('--checkpoint_interval', type=int, default=100, help='check point interval')
+        p.add('--log', type=boolean_string, default=False, help='log')
 
         # parse
         opt=DotDict(vars(p.parse_args()))
@@ -180,7 +181,7 @@ def train(command=False):
     #######################################################################################################################
     # -- load data
 
-    setup, (train_data, test_data, validation_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop, opt.start_time, rescaled_method=opt.rescaled, normalize_method=opt.normalize_method, validation_ratio=opt.validation_ratio, relations_names=opt.relations, time_datas=opt.time_datas)
+    setup, (train_data, test_data, validation_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop, opt.start_time, rescaled_method=opt.rescaled, normalize_method=opt.normalize_method, validation_length=opt.validation_length , relations_names=opt.relations, time_datas=opt.time_datas)
     # relations = relations[:, :, :, 0]
     train_data = train_data.to(device)
     test_data = test_data.to(device)
@@ -320,10 +321,11 @@ def train(command=False):
             logs_train[rel_name + '_min'] /= len(batches_dec) + len(batches_dyn)
             logs_train[rel_name + '_mean'] /= len(batches_dec) + len(batches_dyn)
         logs_train['train_loss'] = logs_train['mse_dec'] + logs_train['loss_dyn']
-        logger.log('train_epoch', logs_train)
-        # checkpoint
-        # logger.log('train_epoch.lr', lr)
-        logger.checkpoint(model)
+        if opt.log:
+            logger.log('train_epoch', logs_train)
+            # checkpoint
+            # logger.log('train_epoch.lr', lr)
+            logger.checkpoint(model)
         # ------------------------ Test ------------------------
         if opt.test:
             model.eval()
@@ -334,7 +336,8 @@ def train(command=False):
                 pb.set_postfix(loss=logs_train['train_loss'], test=score)
             else:
                 print(e, 'loss=', logs_train['train_loss'], 'test=', score)
-            logger.log('test_epoch.rmse', score)
+            if opt.log:
+                logger.log('test_epoch.rmse', score)
             if opt.mintest > score:
                 opt.mintest = score
                 # schedule lr
@@ -398,7 +401,10 @@ def train(command=False):
     opt.time = str(end_st - start_st)
     with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
         json.dump(opt, f, sort_keys=True, indent=4)
+    # if opt.log:
     logger.save(model)
+    print()
+    print(opt.xp)
 
 if __name__ == "__main__":
     train(True)

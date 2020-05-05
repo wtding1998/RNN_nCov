@@ -1987,7 +1987,6 @@ class SaptioTemporalNN_v0(nn.Module):
             z_gen.append(z)
         z_gen = torch.stack(z_gen)
         x_gen = self.decode_z(z_gen)
-        print(z_gen)
         return x_gen, z_gen
 
     def factors_parameters(self):

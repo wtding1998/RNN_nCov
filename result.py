@@ -208,6 +208,14 @@ class Exp():
         if self.config['mode'] == None:
             self.config['mode'] = 'default'
         return rmse_loss
+
+    def validation_loss(self):
+        # --- validation data ---
+        data = self.data_np()
+        validation_length = self.config['validation_length']
+        validation_data = data[self.nt_train:self.nt_train + validation_length]
+        pred = self.pred()[:validation_length]
+        return validation_data, pred
     
     def plot_relations(self):
         relations = self.config['relations_order']
@@ -297,7 +305,7 @@ class Printer():
                 li.append(i)
         return li
 
-    def get_df(self, col=['train_loss', 'test_loss', 'true_loss', 'nhid', 'nlayers'], required_list = 'all', mean=False, min=False):
+    def get_df(self, col=['train_loss', 'test_loss', 'true_loss', 'nhid', 'nlayers'], required_list = 'all', mean=False, min=False, increase=False, nt_train=0):
         if isinstance(required_list, str):
             required_list = next_dir(self.folder)
         df_dir = {}
@@ -309,7 +317,14 @@ class Printer():
                 print(exp_name, ' x')
 
         df = pandas.DataFrame(df_dir)
-        df = pandas.DataFrame(df.values.T, index=df.columns, columns=df.index)[col]
+        df = pandas.DataFrame(df.values.T, index=df.columns, columns=df.index)
+        if nt_train > 0:
+            df = df.loc[df['nt_train'] == nt_train]
+        if increase:
+            df = df.loc[df['increase'] == True]
+        else:
+            df = df.loc[df['increase'] == False]
+        df = df[col]
         # df_list = []
         # for model_name in required_list: 
         #     config = get_config(os.path.join(self.folder, model_name))
@@ -327,6 +342,7 @@ class Printer():
             exp_name = df.iloc[i, -1]
             used_model = exp_name.split('-')[0]
             df.iloc[i, -1] = used_model
+
         return df
 
     def min_idx(self, col=['test_loss', 'train_loss', 'nhid', 'nlayers'], required_list = 'all'):
@@ -476,4 +492,4 @@ if __name__ == "__main__":
     # exp = Exp(exp_name, path)
     # print(exp.plot_train_times().shape)
     pred_dir,data = get_pred(exp_dir, path, train=True)
-    plot_pred_by_dir(pred_dir, data)
+    plot_pred_by_dir(exp_dir, data)

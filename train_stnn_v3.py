@@ -39,7 +39,7 @@ def train(command=False):
         p.add('--datadir', type=str, help='path to dataset', default='data')
         p.add('--dataset', type=str, help='dataset name', default='ncov_confirmed')
         p.add('--nt_train', type=int, help='time for training', default=50)
-        p.add('--validation_ratio', type=float, help='validation/train', default=0.1)
+        p.add('--validation_length', type=int, help='validation/train', default=1)
         p.add('--start_time', type=int, help='start time for data', default=0)
         p.add('--rescaled', type=str, help='rescaled method', default='d')
         p.add('--normalize_method', type=str, help='normalize method for relation', default='all')
@@ -91,6 +91,7 @@ def train(command=False):
         p.add('--manualSeed', type=int, help='manual seed')
         # -- logs
         p.add('--checkpoint_interval', type=int, default=100, help='check point interval')
+        p.add('--log', type=boolean_string, default=False, help='log')
 
         # parse
         opt=DotDict(vars(p.parse_args()))
@@ -179,7 +180,7 @@ def train(command=False):
     #######################################################################################################################
     # -- load data
 
-    setup, (train_data, test_data, validation_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop, opt.start_time, rescaled_method=opt.rescaled, normalize_method=opt.normalize_method, relations_names=opt.relations, time_datas=opt.time_datas)
+    setup, (train_data, test_data, validation_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop, opt.start_time, rescaled_method=opt.rescaled, normalize_method=opt.normalize_method, relations_names=opt.relations, time_datas=opt.time_datas, validation_data = opt.validation_length)
     # relations = relations[:, :, :, 0]
     train_data = train_data.to(device)
     test_data = test_data.to(device)
@@ -309,10 +310,11 @@ def train(command=False):
             logs_train[rel_name + '_max'] /= len(batches)
             logs_train[rel_name + '_min'] /= len(batches)
             logs_train[rel_name + '_mean'] /= len(batches)
-        logger.log('train_epoch', logs_train)
-        # checkpoint
-        # logger.log('train_epoch.lr', lr)
-        logger.checkpoint(model)
+        if opt.log:
+            logger.log('train_epoch', logs_train)
+            # checkpoint
+            # logger.log('train_epoch.lr', lr)
+            logger.checkpoint(model)
         # ------------------------ Test ------------------------
         if opt.test:
             model.eval()
@@ -323,7 +325,8 @@ def train(command=False):
                 pb.set_postfix(loss=logs_train['train_loss'], test=score)
             else:
                 print(e, 'loss=', logs_train['train_loss'], 'test=', score)
-            logger.log('test_epoch.rmse', score)
+            if opt.log:
+                logger.log('test_epoch.rmse', score)
             if opt.mintest > score:
                 opt.mintest = score
                 # schedule lr

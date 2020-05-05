@@ -125,7 +125,7 @@ def get_multi_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0):
     test_data = data[nt_train:]
     return opt, (train_data, test_data), relations
 
-def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0, rescaled_method='d', normalize_method='all', normalize='variance', validation_ratio=0.1, relations_names='all', time_datas='all'):
+def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0, rescaled_method='d', normalize_method='all', normalize='variance', validation_length=1, relations_names='all', time_datas='all'):
     # get dataset
     opt = DotDict()
     data, opt.datas_order = get_time_data(data_dir, disease_name, start_time, time_datas=time_datas)
@@ -171,7 +171,7 @@ def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0, rescaled_
     elif normalize == 'variance':
         opt.std = torch.std(train_data).item()
         data = (data - opt.mean) / opt.std
-    opt.validation_length = min(int(nt_train * validation_ratio), 1)
+    opt.validation_length = validation_length
     test_data = data[nt_train:]
     train_data = data[:nt_train]
     validation_data = test_data[:opt.validation_length]
