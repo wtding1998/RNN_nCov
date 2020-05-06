@@ -102,7 +102,7 @@ class Exp():
             model = SaptioTemporalNN_v0(self.relations(), self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],
                         self.config['dropout_f'], self.config['dropout_d'], self.config['activation'], self.config['periode'])
         if self.model_name == 'v1':
-            model = SaptioTemporalNN_concat(self.relations(), self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],
+            model = SaptioTemporalNN_concat(self.relations(), self.data_torch()[:self.config['nt_train']], self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],
                         self.config['dropout_f'], self.config['dropout_d'], self.config['activation'], self.config['periode'])
         if self.model_name == 'v2':
             model = SaptioTemporalNN_input(self.relations(), self.data_torch()[:self.config['nt_train']], self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],

@@ -91,6 +91,7 @@ def train(command=False):
         # -- logs
         p.add('--checkpoint_interval', type=int, default=100, help='check point interval')
         p.add('--log', type=boolean_string, default=False, help='log')
+        p.add('--log_relations', type=boolean_string, default=False, help='log relations')
 
         # parse
         opt=DotDict(vars(p.parse_args()))
@@ -226,8 +227,8 @@ def train(command=False):
 
     if opt.patience > 0:
         lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=opt.patience)
-
-    relations_0 = model.get_relations()[:, 1:]
+    if opt.log_relations:
+        relations_0 = model.get_relations()[:, 1:]
     #######################################################################################################################
     # Logs
     #######################################################################################################################
@@ -240,7 +241,10 @@ def train(command=False):
     # Training
     #######################################################################################################################
     lr = opt.lr
-    opt.mintest = 1000.0
+    opt.minsum = 1e5
+    opt.min_sum_epoch = 0
+    opt.minrmse = 1e5
+    opt.min_rmse_epoch = 0
     if command:
         pb = trange(opt.nepoch)
     else:
@@ -269,11 +273,12 @@ def train(command=False):
             # logger.log('train_iter.mse_dec', mse_dec.item())
             logs_train['mse_dec'] += mse_dec.item() * len(batch)
             # === relation difference ===
-            relation_diff = model.get_relations()[:, 1:] - relations_0
-            for i, rel_name in enumerate(opt.relations_order): 
-                logs_train[rel_name + '_max'] += relation_diff[:, i].max().item()
-                logs_train[rel_name + '_min'] += relation_diff[:, i].min().item()
-                logs_train[rel_name + '_mean'] += relation_diff[:, i].mean().item()
+            if opt.log_relations:
+                relation_diff = model.get_relations()[:, 1:] - relations_0
+                for i, rel_name in enumerate(opt.relations_order): 
+                    logs_train[rel_name + '_max'] += relation_diff[:, i].max().item()
+                    logs_train[rel_name + '_min'] += relation_diff[:, i].min().item()
+                    logs_train[rel_name + '_mean'] += relation_diff[:, i].mean().item()
 
         # --- dynamic ---
         idx_perm = torch.randperm(nex_dyn).to(device)
@@ -307,20 +312,22 @@ def train(command=False):
             logs_train['mse_dyn'] += mse_dyn.item() * len(batch)
             logs_train['loss_dyn'] += loss_dyn.item() * len(batch)
             # === relation diffenerce ===
-            relation_diff = model.get_relations()[:, 1:] - relations_0
-            for i, rel_name in enumerate(opt.relations_order): 
-                logs_train[rel_name + '_max'] += relation_diff[:, i].max().item()
-                logs_train[rel_name + '_min'] += relation_diff[:, i].min().item()
-                logs_train[rel_name + '_mean'] += relation_diff[:, i].mean().item()
+            if opt.log_relations:
+                relation_diff = model.get_relations()[:, 1:] - relations_0
+                for i, rel_name in enumerate(opt.relations_order): 
+                    logs_train[rel_name + '_max'] += relation_diff[:, i].max().item()
+                    logs_train[rel_name + '_min'] += relation_diff[:, i].min().item()
+                    logs_train[rel_name + '_mean'] += relation_diff[:, i].mean().item()
         # --- logs ---
         # TODO:
         logs_train['mse_dec'] /= nex_dec
         logs_train['mse_dyn'] /= nex_dyn
         logs_train['loss_dyn'] /= nex_dyn
-        for i, rel_name in enumerate(opt.relations_order): 
-            logs_train[rel_name + '_max'] /= len(batches_dec) + len(batches_dyn)
-            logs_train[rel_name + '_min'] /= len(batches_dec) + len(batches_dyn)
-            logs_train[rel_name + '_mean'] /= len(batches_dec) + len(batches_dyn)
+        if opt.log_relations:
+            for i, rel_name in enumerate(opt.relations_order): 
+                logs_train[rel_name + '_max'] /= len(batches_dec) + len(batches_dyn)
+                logs_train[rel_name + '_min'] /= len(batches_dec) + len(batches_dyn)
+                logs_train[rel_name + '_mean'] /= len(batches_dec) + len(batches_dyn)
         logs_train['train_loss'] = logs_train['mse_dec'] + logs_train['loss_dyn']
         if opt.log:
             logger.log('train_epoch', logs_train)
@@ -333,20 +340,24 @@ def train(command=False):
             with torch.no_grad():
                 x_pred, _ = model.generate(opt.validation_length)
                 if opt.validation_method == 'torch':
-                    opt.val_score = rmse(x_pred, validation_data)
-                else:
-                    opt.val_score = rmse_sum_confirmed(x_pred, validation_data) / opt.validation_length
+                    opt.rmse_score = rmse(x_pred, validation_data)
+                    opt.sum_score = rmse_sum_confirmed(x_pred, test_data) / x_pred.size(0)
             if command:
-                pb.set_postfix(loss=logs_train['train_loss'], test=opt.val_score)
+                pb.set_postfix(loss=logs_train['train_loss'], sum=opt.sum_score, rmse=opt.rmse_score)
             else:
-                print(e, 'loss=', logs_train['train_loss'], 'test=', opt.val_score)
+                print(e, 'loss=', logs_train['train_loss'], 'test=', opt.sum_score)
             if opt.log:
-                logger.log('test_epoch.rmse', opt.val_score)
-            if opt.mintest > opt.val_score:
-                opt.min_val = opt.val_score
+                logger.log('test_epoch.rmse', opt.rmse_score)
+                logger.log('test_epoch.sum', opt.sum_score)
+            if opt.minsum > opt.sum_score:
+                opt.minsum = opt.sum_score
+                opt.min_sum_epoch = e
+            if opt.minrmse > opt.rmse_score:
+                opt.minrmse = opt.rmse_score
+                opt.min_rmse_epoch = e
                 # schedule lr
-            if opt.patience > 0 and opt.val_score < opt.sch_bound:
-                lr_scheduler.step(opt.val_score)
+            if opt.patience > 0 and opt.sum_score < opt.sch_bound:
+                lr_scheduler.step(opt.sum_score)
             lr = optimizer.param_groups[0]['lr']
             if lr <= 1e-5:
                 break
@@ -360,7 +371,9 @@ def train(command=False):
     with torch.no_grad():
         x_pred, _ = model.generate(opt.nt - opt.nt_train)
         score_ts = rmse(x_pred, test_data, reduce=False)
-        score = rmse(x_pred, test_data)
+        opt.final_rmse_score = rmse(x_pred, test_data)
+        opt.final_sum_score = rmse_sum_confirmed(x_pred, test_data) / opt.validation_length
+
     # logger.log('test.rmse', score)
     # logger.log('test.ts', {t: {'rmse': scr.item()} for t, scr in enumerate(score_ts)})
     true_pred_data = torch.zeros_like(x_pred)
@@ -389,11 +402,11 @@ def train(command=False):
         opt['score_true_' + data_kind] = rmse_np(d_pred, true_test_data[:, :, i])
         opt['score_' + data_kind] = rmse_np(x_pred[:, :, i], test_data[:, :, i])
     # save relations
-    final_relations = model.get_relations()[:, 1:].detach().cpu().numpy()
-    for i, rel_name in enumerate(opt.relations_order):
-        single_rel = final_relations[:, i]
-        np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'rel_' + rel_name + '.txt'), single_rel, delimiter=',')
-    opt.test_loss = score
+    if opt.log_relations:
+        final_relations = model.get_relations()[:, 1:].detach().cpu().numpy()
+        for i, rel_name in enumerate(opt.relations_order):
+            single_rel = final_relations[:, i]
+            np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'rel_' + rel_name + '.txt'), single_rel, delimiter=',')
     opt.true_loss = true_score
     opt.train_loss = logs_train['train_loss']
     opt.dec_loss = logs_train['mse_dec']

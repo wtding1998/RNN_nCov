@@ -1693,7 +1693,6 @@ class SaptioTemporalNN_concat(nn.Module):
         state_gen : (nsteps, nx, nz)
         '''
         final_state = self.factors[start].unsqueeze(0)
-        final_input = self.input_data[start].unsqueeze(0)
         state_gen = []
         rec_gen = []
         for t in range(nsteps):
