@@ -335,7 +335,8 @@ def train(command=False):
             else:
                 print(e, 'loss=', logs_train['train_loss'], 'test=', opt.sum_score)
             if opt.log:
-                logger.log('test_epoch.rmse', opt.sum_score)
+                logger.log('test_epoch.rmse', opt.rmse_score)
+                logger.log('test_epoch.sum', opt.sum_score)
             if opt.minrmse > opt.rmse_score:
                 opt.minrmse = opt.rmse_score
                 opt.min_rmse_epoch = e

@@ -201,17 +201,21 @@ def get_keras_dataset(data_dir, disease_name, nt_train, seq_len, start_time=0, n
     # split train / test
     data = np.reshape(data, (opt.nt, opt.nx*opt.nd))
     train_data = data[:nt_train]
-    train_input = [] # (batch, squence_length, opt.nx*opt.nd)
-    train_output = [] # (batch, opt.nx*opt.nd)
-    for i in range(nt_train - seq_len):
+    data_input = [] # (batch, squence_length, opt.nx*opt.nd)
+    data_output = [] # (batch, opt.nx*opt.nd)
+    for i in range(opt.nt - seq_len):
         new_input = []
-        train_input.append(train_data[i:i+seq_len][np.newaxis, ...])
-        train_output.append(train_data[i+seq_len][np.newaxis, ...])
-    train_input = np.concatenate(train_input, axis=0)
-    train_output = np.concatenate(train_output, axis=0)
+        data_input.append(data[i:i+seq_len][np.newaxis, ...])
+        data_output.append(data[i+seq_len][np.newaxis, ...])
+    data_input = np.concatenate(data_input, axis=0)
+    data_output = np.concatenate(data_output, axis=0)
+    train_input = data_input[:nt_train - seq_len]
+    train_output = data_output[:nt_train - seq_len]
+    val_input = data_input[nt_train - seq_len:]
+    val_output = data_output[nt_train - seq_len:]
     test_data = data[nt_train:]
     test_input = data[nt_train - seq_len:nt_train]
-    return opt, (train_input, train_output, test_input, test_data)
+    return opt, (train_input, train_output), (val_input, val_output), (test_input, test_data)
 
 if __name__ == "__main__":
     # print(get_time_data('data', 'ncov', 0).size())

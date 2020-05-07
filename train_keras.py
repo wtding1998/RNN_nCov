@@ -13,7 +13,7 @@ from keras.optimizers import SGD, RMSprop, adam
 import numpy as np
 
 from get_dataset import get_keras_dataset
-from utils import DotDict, Logger_keras, boolean_string, get_dir, get_time, time_dir, shuffle_list, rmse_np
+from utils import DotDict, Logger_keras, boolean_string, get_dir, get_time, time_dir, shuffle_list, rmse_np, rmse_np_like_torch
 
 
 
@@ -23,7 +23,7 @@ from utils import DotDict, Logger_keras, boolean_string, get_dir, get_time, time
 p = configargparse.ArgParser()
 # -- data
 p.add('--datadir', type=str, help='path to dataset', default='data')
-p.add('--dataset', type=str, help='dataset name', default='ncov_confirmed')
+p.add('--dataset', type=str, help='dataset name', default='mar_rnn')
 p.add('--nt_train', type=int, help='time for training', default=50)
 p.add('--start_time', type=int, help='time for training', default=0)
 p.add('--increase', type=boolean_string, help='whether to use daily increase data', default=True)
@@ -44,17 +44,18 @@ p.add('--dropout', type=float, help='dropout rate', default=0.5)
 p.add('--activation', type=str, help='activation', default='relu')
 p.add('--rnn_model', type=str, help='choose rnn model : LSTM | GRU', default='GRU')
 # -- optim
-p.add('--lr', type=float, help='learning rate', default=1e-2)
+p.add('--lr', type=float, help='learning rate', default=1e-3)
 p.add('--validation_ratio', type=float, help='validation rate', default=0.1)
 p.add('--clip_value', type=float, help='clip_value for learning', default=5.0)
 
 # -- learning
 p.add('--batch_size', type=int, default=10, help='batch size')
-p.add('--nepoch', type=int, default=20000, help='number of epochs to train for')
+p.add('--nepoch', type=int, default=1, help='number of epochs to train for')
 # -- seed
 p.add('--manualSeed', type=int, help='manual seed')
 # -- logs
 p.add('--checkpoint_interval', type=int, default=700, help='check point interval')
+p.add('--log', type=boolean_string, default=True, help='log')
 # parse
 opt = DotDict(vars(p.parse_args()))
 
@@ -74,7 +75,7 @@ np.random.seed(opt.manualSeed)
 if opt.increase:
     opt.dataset = opt.dataset + '_increase'
 
-setup, (train_input, train_output, test_input, test_data)= get_keras_dataset(opt.datadir, opt.dataset, opt.nt_train,opt.seq_length, opt.start_time, opt.reduce)
+setup, (train_input, train_output), (val_input, val_output), (test_input, test_data)= get_keras_dataset(opt.datadir, opt.dataset, opt.nt_train,opt.seq_length, opt.start_time, opt.reduce)
 
 for k, v in setup.items():
     opt[k] = v
@@ -138,7 +139,7 @@ model.add(Dropout(opt.dropout))
 model.add(Dense(
     opt.nx*opt.nd))
 model.add(Activation(opt.activation))
-model.compile(loss="mse", optimizer='rmsprop', metrics=['mae', 'mape'])
+model.compile(loss="mse", optimizer=RMSprop(lr=opt.lr))
 
 #######################################################################################################################
 # Logs
@@ -149,7 +150,7 @@ logger = Logger_keras(get_dir(opt.outputdir), opt.xp, opt.checkpoint_interval)
 #######################################################################################################################
 model_history = model.fit(
     train_input, train_output,
-    batch_size=opt.batch_size, epochs=opt.nepoch, validation_split=opt.validation_ratio)
+    batch_size=opt.batch_size, epochs=opt.nepoch, validation_data=(val_input, val_output))
 
 #######################################################################################################################
 # Test
@@ -166,17 +167,24 @@ pred = np.concatenate(pred, axis=0)
 pred = np.reshape(pred, (opt.nt - opt.nt_train, opt.nx, opt.nd))
 test_data = np.reshape(test_data, (opt.nt - opt.nt_train, opt.nx, opt.nd))
 # print(pred)
-score = rmse_np(pred, test_data)
+opt.rmse_score = rmse_np_like_torch(pred, test_data)
+opt.sum_score = np.linalg.norm(pred - test_data) / pred.shape[0]
 if opt.normalize == 'max_min':
     pred = pred * (opt.max - opt.min) + opt.mean
-    opt.true_loss = score * (opt.max - opt.min)
+    opt.true_rmse_loss = opt.rmse_score * (opt.max - opt.min)
+    opt.true_sum_loss = opt.sum_score * (opt.max - opt.min)
+
 if opt.normalize == 'variance':
     pred = pred * opt.std + opt.mean
-    opt.true_loss = score * opt.std
-opt.test_loss = score
+    opt.true_rmse_loss = opt.rmse_score * (opt.max - opt.min)
+    opt.true_sum_loss = opt.sum_score * (opt.max - opt.min)
+
 train_loss_history = model_history.history['loss']
-logger.log('train_loss.epoch', train_loss_history)
-opt.train_loss = train_loss_history[-1]
+test_loss_history = model_history.history['val_loss']
+if opt.log:
+    logger.log('train_loss.epoch', train_loss_history)
+    logger.log('test_loss.epoch', test_loss_history)
+    
 opt.end = time_dir()
 end_st = datetime.datetime.now()
 opt.et = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
