@@ -219,10 +219,10 @@ def get_keras_dataset(data_dir, disease_name, nt_train, seq_len, start_time=0, n
 
 if __name__ == "__main__":
     # print(get_time_data('data', 'ncov', 0).size())
-    print(get_keras_dataset('data', 'jar_increase', 7, 2, start_time=3)[1][0])
-    print(get_keras_dataset('data', 'jar_increase', 7, 2, start_time=3)[1][1])
-    print(get_keras_dataset('data', 'jar_increase', 7, 2, start_time=3)[1][2])
-    print(get_keras_dataset('data', 'jar_increase', 7, 2, start_time=3)[1][3])
+    print(get_keras_dataset('data', 'jar_increase', 7, 2, start_time=3)[1][0].shape)
+    # print(get_keras_dataset('data', 'jar_increase', 7, 2, start_time=3)
+    # print(get_keras_dataset('data', 'jar_increase', 7, 2, start_time=3)
+    # print(get_keras_dataset('data', 'jar_increase', 7, 2, start_time=3)
     # result
     # torch.Size([7, 3, 34, 3])
     # torch.Size([7, 34, 3])

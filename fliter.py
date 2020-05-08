@@ -5,7 +5,8 @@ from result import *
 source_dir = '../output'
 target_dir = '../output_result'
 # outputdirs = ['jar', 'jar2', 'jar0407', 'jar0411', 'jar0416', 'jar0426', 'mar', 'mar2', 'mar3', 'mar4', 'mar0406', 'mar0407', 'mar0411', 'mar0416', 'mar0426', 'mar0430']
-outputdirs = ['jar0507', 'feb0507', 'mar0507']
+# outputdirs = ['jar0507', 'feb0507', 'mar0507']
+outputdirs = ['test_fli']
 
 if not os.path.exists(target_dir):
     os.makedirs(target_dir)

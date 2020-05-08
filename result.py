@@ -66,7 +66,7 @@ class Exp():
         self.config = get_config(os.path.join(self.path, self.exp_name))
         self.nt = self.config['nt']
         self.nx = self.config['nx']
-        self.nz = self.config['nz']
+        self.nz = self.config.get('nz')
         self.nt_train = self.config['nt_train']
         if 'increase' in self.config and self.config['increase']:
             self.increase = True
@@ -260,7 +260,7 @@ class Exp():
         '''
         # --- calculate prediction ---
         print('generate prediction for', self.exp_name)
-        data, datas_name = get_time_data('data', self.config['dataset'], start_time=self.config['start_time'], time_datas=self.config['time_datas'], use_torch=False) 
+        data, datas_name = get_time_data('data', self.config['dataset'], start_time=self.config['start_time'], time_datas=self.config.get('time_datas', ['confirmed']), use_torch=False) 
         increase_data = self.pred(increase=True)
         nt_pred = increase_data.shape[0]
         start_data = data[-nt_pred-1]
