@@ -1,7 +1,7 @@
 from keras.layers.core import Dense, Activation, Dropout, Flatten
 from keras.layers.recurrent import LSTM, GRU
 from keras.models import Sequential, load_model
-from keras.optimizers import SGD, RMSprop, adam
+from keras.optimizers import SGD, RMSprop, Adam
 import numpy as np
 
 def LSTM_module(ninput, nhid, nlayers, nout, activation='relu', lr=1e-3, dropout=0.5):
@@ -26,7 +26,7 @@ def LSTM_module(ninput, nhid, nlayers, nout, activation='relu', lr=1e-3, dropout
             return_sequences=False))
     model.add(Dense(nout))
     model.add(Activation(activation))
-    model.compile(loss="mse", optimizer=RMSprop(lr=lr))
+    model.compile(loss="mse", optimizer=Adam(lr=lr))
     return model
 
 def GRU_module(ninput, nhid, nlayers, nout, activation='relu', lr=1e-3, dropout=0.5):
@@ -114,7 +114,6 @@ def GRU_Linear(ninput, nhid, nlayers, nout, activation='relu', lr=1e-3, dropout=
             nhid,
             return_sequences=False))
     model.add(Dense(nout))
-    model.add(Activation(activation))
     model.compile(loss="mse", optimizer=RMSprop(lr=lr))
     return model
 

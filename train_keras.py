@@ -25,6 +25,7 @@ p = configargparse.ArgParser()
 # -- data
 p.add('--datadir', type=str, help='path to dataset', default='data')
 p.add('--dataset', type=str, help='dataset name', default='mar_rnn')
+p.add('--normalize', type=str, help='normaize method : vairance | min_max', default='variance')
 p.add('--nt_train', type=int, help='time for training', default=50)
 p.add('--start_time', type=int, help='time for training', default=0)
 p.add('--increase', type=boolean_string, help='whether to use daily increase data', default=True)
@@ -42,7 +43,7 @@ p.add('--seq_length', type=int, help='sequence length', default=5)
 p.add('--nhid', type=int, help='dynamic function hidden size', default=50)
 p.add('--nlayers', type=int, help='dynamic function num layers', default=2)
 p.add('--dropout', type=float, help='dropout rate', default=0.5)
-p.add('--activation', type=str, help='activation function : relu | tanh | sigmoid', default='relu')
+p.add('--activation', type=str, help='activation function : relu | tanh | sigmoid', default='tanh')
 p.add('--rnn_model', type=str, help='choose rnn model : LSTM(GRU)_module | LSTM(GRU)_Linear ', default='GRU_module')
 # -- optim
 p.add('--lr', type=float, help='learning rate', default=1e-3)
@@ -76,7 +77,7 @@ np.random.seed(opt.manualSeed)
 if opt.increase:
     opt.dataset = opt.dataset + '_increase'
 
-setup, (train_input, train_output), (val_input, val_output), (test_input, test_data)= get_keras_dataset(opt.datadir, opt.dataset, opt.nt_train,opt.seq_length, opt.start_time, opt.reduce)
+setup, (train_input, train_output), (val_input, val_output), (test_input, test_data)= get_keras_dataset(opt.datadir, opt.dataset, opt.nt_train, opt.seq_length, start_time=opt.start_time, normalize=opt.normalize)
 
 for k, v in setup.items():
     opt[k] = v
@@ -162,8 +163,8 @@ logger = Logger_keras(get_dir(opt.outputdir), opt.xp, opt.checkpoint_interval)
 # Training
 #######################################################################################################################
 model_history = model.fit(
-    train_input, train_output,
-    batch_size=opt.batch_size, epochs=opt.nepoch, validation_data=(val_input, val_output))
+    train_input, train_output, validation_data=(val_input, val_output),
+    batch_size=opt.batch_size, epochs=opt.nepoch)
 
 #######################################################################################################################
 # Test
@@ -189,8 +190,8 @@ if opt.normalize == 'max_min':
 
 if opt.normalize == 'variance':
     pred = pred * opt.std + opt.mean
-    opt.true_rmse_loss = opt.rmse_score * (opt.max - opt.min)
-    opt.true_sum_loss = opt.sum_score * (opt.max - opt.min)
+    opt.true_rmse_loss = opt.rmse_score * opt.std
+    opt.true_sum_loss = opt.sum_score * opt.std
 
 train_loss_history = model_history.history['loss']
 test_loss_history = model_history.history['val_loss']
