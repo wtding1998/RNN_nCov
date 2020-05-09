@@ -131,6 +131,8 @@ class Exp():
     def data_torch(self, increase=False):
         if self.increase:
             dataset = self.config['dataset'].replace('_increase', '')
+        else:
+            dataset = self.config['dataset']
 
         if increase:
             if 'time_datas' in self.config.keys():
@@ -147,6 +149,9 @@ class Exp():
     def data_np(self, increase=False):
         if self.increase:
             dataset = self.config['dataset'].replace('_increase', '')
+        else:
+            dataset = self.config['dataset']
+
         if increase:
             if 'time_datas' in self.config.keys():
                 data, _ = get_time_data(self.config['datadir'], dataset + '_increase', self.config['start_time'], self.config['time_datas'], use_torch=False)
