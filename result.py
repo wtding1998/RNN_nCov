@@ -162,13 +162,15 @@ class Exp():
                 data, _ = get_time_data(self.config['datadir'], dataset, self.config['start_time'], self.config['time_datas'], use_torch=False)
             else:
                 data, _ = get_time_data(self.config['datadir'], dataset, self.config['start_time'], 'all', use_torch=False)
-
         return data
     
     def pred_loss(self, reduce=True, increase=False):
         data = self.data_np(increase)
-        if not increase:
+        print(data.shape)
+        if not increase and hasattr(self, 'nt_pred'):
             nt_train = self.nt - self.nt_pred + 1
+        else:
+            nt_train = self.nt_train
         test_data = data[nt_train:,:, 0]
         pred = self.pred()[:,:, 0]
         if reduce:
@@ -559,7 +561,7 @@ if __name__ == "__main__":
 
     # --- test increase data ---
     path = 'D:/Jupyter_Documents/ML-code/research_code/output/test_fli'
-    exp_name = 'keras-rnn_05-07-16-38-29_9689'
+    exp_name = 'ori-stnn_00-06-05-04-56'
     exp_dir = {'test': exp_name}
     # exp_name = 'v2-stnn_05-03-00-05-59_0251'
     # exp = Exp(exp_name, path)
