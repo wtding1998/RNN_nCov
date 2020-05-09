@@ -1,13 +1,20 @@
-import os
-import torch
 import json
-import pandas
-import numpy as np
+import os
+
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas
+import torch
+
+from get_dataset import get_relations, get_time_data
 from rnn_model import *
-from utils import normalize, DotDict, Logger, rmse, rmse_tensor, boolean_string, get_dir, get_time, next_dir, get_model, model_dir, rmse_np, rmse_np_like_torch
-from stnn import SaptioTemporalNN_v0, SaptioTemporalNN_concat, SaptioTemporalNN_input, SaptioTemporalNN_input_simple
-from get_dataset import get_time_data, get_relations
+from stnn import (SaptioTemporalNN_concat, SaptioTemporalNN_input,
+                  SaptioTemporalNN_input_simple, SaptioTemporalNN_v0)
+from utils import (DotDict, Logger, boolean_string, get_dir, get_model,
+                   get_time, model_dir, next_dir, normalize, rmse, rmse_np,
+                   rmse_np_like_torch, rmse_tensor)
+
+# from keras.models import load_model
 
 
 def get_config(model_dir):
@@ -62,8 +69,10 @@ class Exp():
     def __init__(self, exp_name, path):
         self.path = path
         self.exp_name = exp_name
-        self.model_name = exp_name.split('-')[0]
         self.config = get_config(os.path.join(self.path, self.exp_name))
+        self.model_name = exp_name.split('-')[0]
+        if self.model_name == 'keras':
+            self.model_name == self.config['rnn_model']
         self.nt = self.config['nt']
         self.nx = self.config['nx']
         self.nz = self.config.get('nz')
@@ -94,48 +103,73 @@ class Exp():
         return self.logs()['train_loss.epoch']
 
     def model(self):
-        if self.model_name == 'LSTM':
-            model = LSTMNet(self.config['nx'], self.config['nhid'], self.config['nlayers'], self.config['nx'], self.config['seq_length'])
-        if self.model_name == 'GRU':
-            model = GRUNet(self.config['nx'], self.config['nhid'], self.config['nlayers'], self.config['nx'], self.config['seq_length'])
+        # if (self.model_name == 'LSTM') or (self.model_name == 'GRU'):
+        #     model = load_model(os.path.join(self.path, self.exp_name, 'model.h5'))
+
         if self.model_name == 'ori':
             model = SaptioTemporalNN_v0(self.relations(), self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],
                         self.config['dropout_f'], self.config['dropout_d'], self.config['activation'], self.config['periode'])
+            model.load_state_dict(torch.load(os.path.join(self.path, self.exp_name, 'model.pt')))
+
         if self.model_name == 'v1':
             model = SaptioTemporalNN_concat(self.relations(), self.data_torch()[:self.config['nt_train']], self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],
                         self.config['dropout_f'], self.config['dropout_d'], self.config['activation'], self.config['periode'])
+            model.load_state_dict(torch.load(os.path.join(self.path, self.exp_name, 'model.pt')))
+            
         if self.model_name == 'v2':
             model = SaptioTemporalNN_input(self.relations(), self.data_torch()[:self.config['nt_train']], self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],
                         self.config['dropout_f'], self.config['dropout_d'], self.config['activation'], self.config['periode'], self.config['simple_dec'])
+            model.load_state_dict(torch.load(os.path.join(self.path, self.exp_name, 'model.pt')))
+
         if self.model_name == 'v3':
             model = SaptioTemporalNN_input_simple(self.relations(), self.data_torch()[:self.config['nt_train']], self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],
                         self.config['dropout_f'], self.config['dropout_d'], self.config['activation'], self.config['periode'])
+            model.load_state_dict(torch.load(os.path.join(self.path, self.exp_name, 'model.pt')))
 
-        model.load_state_dict(torch.load(os.path.join(self.path, self.exp_name, 'model.pt')))
         return model
 
-    def data_torch(self):
-        if 'time_datas' in self.config.keys():
-            data, _ = get_time_data(self.config['datadir'], self.config['dataset'], self.config['start_time'], self.config['time_datas'], use_torch=True)
+    def data_torch(self, increase=False):
+        if self.increase:
+            dataset = self.config['dataset'].replace('_increase', '')
+
+        if increase:
+            if 'time_datas' in self.config.keys():
+                data, _ = get_time_data(self.config['datadir'], dataset+'_increase', self.config['start_time'], self.config['time_datas'], use_torch=True)
+            else:
+                data, _ = get_time_data(self.config['datadir'], dataset+'_increase', self.config['start_time'], 'all', use_torch=True)
         else:
-            data, _ = get_time_data(self.config['datadir'], self.config['dataset'], self.config['start_time'], 'all', use_torch=True)
+            if 'time_datas' in self.config.keys():
+                data, _ = get_time_data(self.config['datadir'], dataset, self.config['start_time'], self.config['time_datas'], use_torch=True)
+            else:
+                data, _ = get_time_data(self.config['datadir'], dataset, self.config['start_time'], 'all', use_torch=True)
         return data
 
-    def data_np(self):
-        if 'time_datas' in self.config.keys():
-            data, _ = get_time_data(self.config['datadir'], self.config['dataset'], self.config['start_time'], self.config['time_datas'], use_torch=False)
+    def data_np(self, increase=False):
+        if self.increase:
+            dataset = self.config['dataset'].replace('_increase', '')
+        if increase:
+            if 'time_datas' in self.config.keys():
+                data, _ = get_time_data(self.config['datadir'], dataset + '_increase', self.config['start_time'], self.config['time_datas'], use_torch=False)
+            else:
+                data, _ = get_time_data(self.config['datadir'], dataset + '_increase', self.config['start_time'], 'all', use_torch=False)
         else:
-            data, _ = get_time_data(self.config['datadir'], self.config['dataset'], self.config['start_time'], 'all', use_torch=False)
+            if 'time_datas' in self.config.keys():
+                data, _ = get_time_data(self.config['datadir'], dataset, self.config['start_time'], self.config['time_datas'], use_torch=False)
+            else:
+                data, _ = get_time_data(self.config['datadir'], dataset, self.config['start_time'], 'all', use_torch=False)
+
         return data
     
-    def pred_loss(self, reduce=True):
-        data = self.data_np()
-        test_data = data[self.nt_train:, :, 0]
+    def pred_loss(self, reduce=True, increase=False):
+        data = self.data_np(increase)
+        if not increase:
+            nt_train = self.nt - self.nt_pred + 1
+        test_data = data[nt_train:,:, 0]
         pred = self.pred()[:,:, 0]
         if reduce:
             test_data = test_data.sum(1)
             pred = pred.sum(1)
-            return np.linalg.norm(test_data - pred) / (self.nt - self.nt_train)
+            return np.linalg.norm(test_data - pred) / (self.nt - nt_train)
         else:
             return rmse_np(test_data, pred)
 
@@ -260,19 +294,33 @@ class Exp():
         '''
         # --- calculate prediction ---
         print('generate prediction for', self.exp_name)
-        data, datas_name = get_time_data('data', self.config['dataset'], start_time=self.config['start_time'], time_datas=self.config.get('time_datas', ['confirmed']), use_torch=False) 
-        increase_data = self.pred(increase=True)
+        data, datas_name = get_time_data('data', self.config['dataset'].replace('_increase', ''), start_time=self.config['start_time'], time_datas=self.config.get('time_datas', ['confirmed']), use_torch=False) 
+        increase_data = self.pred(increase=True) # (nt_pred, 1, nd)
         nt_pred = increase_data.shape[0]
-        start_data = data[-nt_pred-1]
+        # --- add nt_pred in config ---
+        self.config['nt_pred'] = nt_pred
+        self.nt_pred = nt_pred
+        # self.config['nt_train'] = self.config['nt'] - nt_pred
+        # self.nt_train = self.config['nt'] - nt_pred
+
+        if self.nx == 1:
+            data = np.reshape(data.sum(1), (self.nt + 1, 1, -1)) # (nt, 1, nd)
+            increase_data = np.reshape(increase_data, (nt_pred, 1, -1))
+
+        start_data = data[-nt_pred - 1] # (nx, nd)
         pred_data = np.zeros(increase_data.shape)
         pred_data[0] = start_data + increase_data[0]
         for t in range(nt_pred-1):
             pred_data[t + 1] = pred_data[t] + increase_data[t + 1]
+
         # --- save prediction ---
         for i, data_name in enumerate(datas_name):
             np.savetxt(os.path.join(self.path, self.exp_name, 'pred_'+data_name+'.txt'), pred_data[:,:,i], delimiter=',')
-        # --- change nt_train in config
-        self.config['nt_train'] = self.config['nt'] - nt_pred
+
+        # --- calculate sum loss for confirmed---
+        confirmed_pred = pred_data[:,:, 0].sum(1)
+        confirmed_test = data[-nt_pred:,:, 0].sum(1)
+        self.config['sum_loss'] = np.linalg.norm(confirmed_pred - confirmed_test) / nt_pred
         return pred_data
 
     def train_pred(self, pred_test=False):
@@ -438,7 +486,7 @@ def get_pred(exp_dir, folder, train=False):
     data = exp.data_np()
     return pred_dir, data
 
-def plot_pred_by_dir(exp_dir, folder, line_time=0, title='Pred', dim=0, train=False):
+def plot_pred_by_dir(exp_dir, folder, line_time=0, title='Pred', dim=0, train=False, increase=False):
     '''
     pred : {'model_name': (nt_pred, nx, nd)}
     data : (nt, nx, nd)
@@ -447,14 +495,14 @@ def plot_pred_by_dir(exp_dir, folder, line_time=0, title='Pred', dim=0, train=Fa
     loss_dir = {}
     for model_name, exp_name in exp_dir.items():
         exp = Exp(exp_name, folder)
-        pred_data = exp.pred()
+        pred_data = exp.pred(increase)
         nt_pred = pred_data.shape[0]
         if train:
             train_pred = exp.train_pred()
             train_pred = np.reshape(train_pred, (-1, pred_data.shape[1], pred_data.shape[2]))
             pred_data = np.concatenate([train_pred, pred_data], axis=0)
         pred_dir[model_name] = pred_data
-    data = exp.data_np()
+    data = exp.data_np(increase)
     data_sum = data[:,:, dim].sum(1)
     plotted_dir = {}
     for model_name, pred in pred_dir.items():
@@ -481,6 +529,7 @@ def plot_pred_by_dir(exp_dir, folder, line_time=0, title='Pred', dim=0, train=Fa
     plt.axvline(x=line_time,ls="--")
     plt.legend()
     plt.title(title)
+    plt.show()
     return plotted_dir, data_sum
 
 
@@ -504,11 +553,11 @@ if __name__ == "__main__":
     # exp.plot_relations()
 
     # --- test increase data ---
-    path = 'D:/Jupyter_Documents/ML-code/research_code/output/test'
-    exp_name = 'v3-stnn_05-01-10-44-08_9851'
+    path = 'D:/Jupyter_Documents/ML-code/research_code/output/test_fli'
+    exp_name = 'keras-rnn_05-07-16-38-29_9689'
     exp_dir = {'test': exp_name}
     # exp_name = 'v2-stnn_05-03-00-05-59_0251'
     # exp = Exp(exp_name, path)
     # print(exp.plot_train_times().shape)
-    pred_dir,data = get_pred(exp_dir, path, train=True)
-    plot_pred_by_dir(exp_dir, data)
+    # pred_dir,data = get_pred(exp_dir, path, train=False)
+    plot_pred_by_dir(exp_dir, path, increase=False)
