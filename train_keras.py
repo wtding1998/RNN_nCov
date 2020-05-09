@@ -195,6 +195,8 @@ if opt.normalize == 'variance':
 
 train_loss_history = model_history.history['loss']
 test_loss_history = model_history.history['val_loss']
+opt.minrmse = min(test_loss_history)
+opt.min_rmse_epoch = test_loss_history.index(opt.minrmse)
 if opt.log:
     logger.log('train_loss.epoch', train_loss_history)
     logger.log('test_loss.epoch', test_loss_history)
