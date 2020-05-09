@@ -166,7 +166,6 @@ class Exp():
     
     def pred_loss(self, reduce=True, increase=False):
         data = self.data_np(increase)
-        print(data.shape)
         if not increase and hasattr(self, 'nt_pred'):
             nt_train = self.nt - self.nt_pred + 1
         else:
