@@ -11,6 +11,7 @@ from keras.layers.recurrent import LSTM, GRU
 from keras.models import Sequential, load_model
 from keras.optimizers import SGD, RMSprop, adam
 import numpy as np
+from keras_model import *
 
 from get_dataset import get_keras_dataset
 from utils import DotDict, Logger_keras, boolean_string, get_dir, get_time, time_dir, shuffle_list, rmse_np, rmse_np_like_torch
@@ -41,8 +42,8 @@ p.add('--seq_length', type=int, help='sequence length', default=5)
 p.add('--nhid', type=int, help='dynamic function hidden size', default=50)
 p.add('--nlayers', type=int, help='dynamic function num layers', default=2)
 p.add('--dropout', type=float, help='dropout rate', default=0.5)
-p.add('--activation', type=str, help='activation', default='relu')
-p.add('--rnn_model', type=str, help='choose rnn model : LSTM | GRU', default='GRU')
+p.add('--activation', type=str, help='activation function : relu | tanh | sigmoid', default='relu')
+p.add('--rnn_model', type=str, help='choose rnn model : LSTM(GRU)_module | LSTM(GRU)_Linear ', default='GRU_module')
 # -- optim
 p.add('--lr', type=float, help='learning rate', default=1e-3)
 p.add('--validation_ratio', type=float, help='validation rate', default=0.1)
@@ -98,48 +99,60 @@ opt.st = datetime.datetime.now().strftime('%y-%m-%d-%H-%M-%S')
 #######################################################################################################################
 # Model
 #######################################################################################################################
-model = Sequential()
-# 1st layer
-if opt.rnn_model == 'LSTM':
-        model.add(LSTM(
-            opt.nhid,
-            input_shape=(None, opt.nx*opt.nd),
-            return_sequences=True))
-elif opt.rnn_model == 'GRU':
-        model.add(GRU(
-            opt.nhid,
-            input_shape=(None, opt.nx*opt.nd),
-            return_sequences=True))
-model.add(Dense(opt.nx*opt.nd, activation=opt.activation))
-model.add(Dropout(opt.dropout))
-# middle layers
-for i in range(opt.nlayers-2):
-    if opt.rnn_model == 'LSTM':
-        model.add(LSTM(
-            opt.nhid,
-            return_sequences=True))
-    elif opt.rnn_model == 'GRU':
-        model.add(GRU(
-            opt.nhid,
-            return_sequences=True))
-    model.add(Dense(opt.nx*opt.nd, activation=opt.activation))
-    model.add(Dropout(opt.dropout))
+if opt.rnn_model == 'GRU_module':
+    model = GRU_module(opt.nx*opt.nd, opt.nhid, opt.nlayers, opt.nx*opt.nd, activation=opt.activation, lr=opt.lr, dropout=opt.dropout)
 
-# final layer
-if opt.rnn_model == 'LSTM':
-        model.add(LSTM(
-            opt.nhid,
-            return_sequences=False))
-elif opt.rnn_model == 'GRU':
-        model.add(GRU(
-            opt.nhid,
-            return_sequences=False))
-model.add(Dropout(opt.dropout))
+if opt.rnn_model == 'LSTM_module':
+    model = LSTM_module(opt.nx*opt.nd, opt.nhid, opt.nlayers, opt.nx*opt.nd, activation=opt.activation, lr=opt.lr, dropout=opt.dropout)
 
-model.add(Dense(
-    opt.nx*opt.nd))
-model.add(Activation(opt.activation))
-model.compile(loss="mse", optimizer=RMSprop(lr=opt.lr))
+if opt.rnn_model == 'GRU_Linear':
+    model = GRU_Linear(opt.nx*opt.nd, opt.nhid, opt.nlayers, opt.nx*opt.nd, activation=opt.activation, lr=opt.lr, dropout=opt.dropout)
+
+if opt.rnn_model == 'LSTM_Linear':
+    model = LSTM_Linear(opt.nx*opt.nd, opt.nhid, opt.nlayers, opt.nx*opt.nd, activation=opt.activation, lr=opt.lr, dropout=opt.dropout)
+
+# model = Sequential()
+# # 1st layer
+# if opt.rnn_model == 'LSTM':
+#         model.add(LSTM(
+#             opt.nhid,
+#             input_shape=(None, opt.nx*opt.nd),
+#             return_sequences=True))
+# elif opt.rnn_model == 'GRU':
+#         model.add(GRU(
+#             opt.nhid,
+#             input_shape=(None, opt.nx*opt.nd),
+#             return_sequences=True))
+# model.add(Dense(opt.nx*opt.nd, activation=opt.activation))
+# model.add(Dropout(opt.dropout))
+# # middle layers
+# for i in range(opt.nlayers-2):
+#     if opt.rnn_model == 'LSTM':
+#         model.add(LSTM(
+#             opt.nhid,
+#             return_sequences=True))
+#     elif opt.rnn_model == 'GRU':
+#         model.add(GRU(
+#             opt.nhid,
+#             return_sequences=True))
+#     model.add(Dense(opt.nx*opt.nd, activation=opt.activation))
+#     model.add(Dropout(opt.dropout))
+
+# # final layer
+# if opt.rnn_model == 'LSTM':
+#         model.add(LSTM(
+#             opt.nhid,
+#             return_sequences=False))
+# elif opt.rnn_model == 'GRU':
+#         model.add(GRU(
+#             opt.nhid,
+#             return_sequences=False))
+# model.add(Dropout(opt.dropout))
+
+# model.add(Dense(
+#     opt.nx*opt.nd))
+# model.add(Activation(opt.activation))
+# model.compile(loss="mse", optimizer=RMSprop(lr=opt.lr))
 
 #######################################################################################################################
 # Logs
