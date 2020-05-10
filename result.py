@@ -262,15 +262,22 @@ class Exp():
             loss = np.linalg.norm(validation_data.sum(1) - pred.sum(1)) / validation_length
         return loss
 
-    def draw_loss(self, ylim1=0, ylim2=10):
+    def draw_loss(self, ylim1=0, ylim2=1, logs=['sum']):
         log = self.logs()
-        test_loss = log['test_epoch.rmse']
+        di = {}
+        rmse_loss = log['test_epoch.rmse']
+        sum_loss = log['test_epoch.sum']
         dyn_loss = log['train_epoch.loss_dyn']
         dec_loss = log['train_epoch.mse_dec']
         x = np.arange(log['epoch'])
-        plt.plot(x, test_loss, label='test')
-        plt.plot(x, dyn_loss, label='dyn')
-        plt.plot(x, dec_loss, label='dec')
+        if 'rmse' in logs:
+            plt.plot(x, rmse_loss, label='rmse')
+        if 'sum' in logs:
+            plt.plot(x, sum_loss, label='sum')
+        if 'dyn' in log:
+            plt.plot(x, dyn_loss, label='dyn')
+        if 'dec' in logs:
+            plt.plot(x, dec_loss, label='dec')
         plt.legend()
         plt.ylim(ylim1, ylim2)
         
@@ -376,15 +383,15 @@ class Exp():
         error = np.abs(data - pred)
         # --- show image ---
         plt.subplot(1, 3, 1)
-        plt.imshow(data.T, vmax=20000)
+        plt.imshow(data.T)
         plt.title('Data')
         plt.colorbar()
         plt.subplot(1, 3, 2)
-        plt.imshow(pred.T, vmax=20000)
+        plt.imshow(pred.T)
         plt.title('Pred')
         plt.colorbar()
         plt.subplot(1, 3, 3)
-        plt.imshow(error.T, vmax=20000)
+        plt.imshow(error.T)
         plt.title('Error')
         plt.colorbar()
 
@@ -566,6 +573,7 @@ def plot_pred_by_dir(exp_dir, folder, line_time=0, title='Pred', dim=0, train=Fa
     plt.title(title)
     plt.show()
     return plotted_dir, data_sum
+
 
 
 if __name__ == "__main__":
