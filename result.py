@@ -359,6 +359,35 @@ class Exp():
         # x = x.sum(1)
         return self.rescaled(x), z
 
+    def plot_distribution(self, start_time=0):
+        # --- get data ---
+        data = self.data_np(increase=False)
+        pred = self.pred(increase=False)
+        data = data[:,:,0]
+        pred = pred[:,:,0]
+        # --- concat data from start_time ---
+        nt_pred = pred.shape[0]
+        if start_time >= 0:
+            data = data[-nt_pred - start_time:]
+            pred = np.concatenate([data[:start_time], pred], axis=0)
+        else:
+            pred = np.concatenate([data[-nt_pred:], pred], axis=0)
+        
+        error = np.abs(data - pred)
+        # --- show image ---
+        plt.subplot(1, 3, 1)
+        plt.imshow(data.T, vmax=20000)
+        plt.title('Data')
+        plt.colorbar()
+        plt.subplot(1, 3, 2)
+        plt.imshow(pred.T, vmax=20000)
+        plt.title('Pred')
+        plt.colorbar()
+        plt.subplot(1, 3, 3)
+        plt.imshow(error.T, vmax=20000)
+        plt.title('Error')
+        plt.colorbar()
+
 class Printer():
     def __init__(self, folder):
         self.folder = folder
@@ -422,7 +451,7 @@ class Printer():
         print(df)
         return df.idxmin()['test_loss']
 
-def plot_pred(pred, data, start_time=0, title='Pred', dim=0):
+def plot_pred(pred, data, nt_pred_tim=0, title='Pred', dim=0):
     '''
     pred : (nt_pred, nx)
     data : (nt, nx)

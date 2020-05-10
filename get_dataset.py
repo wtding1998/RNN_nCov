@@ -125,52 +125,51 @@ def get_multi_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0):
     test_data = data[nt_train:]
     return opt, (train_data, test_data), relations
 
-def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0, rescaled_method='d', normalize_method='all', normalize='variance', validation_length=1, relations_names='all', time_datas='all'):
+def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0, data_normalize='d', relation_normalize='all', normalize='variance', validation_length=1, relations_names='all', time_datas='all'):
     # get dataset
     opt = DotDict()
     data, opt.datas_order = get_time_data(data_dir, disease_name, start_time, time_datas=time_datas)
     opt.nt, opt.nx, opt.nd = data.size()
     opt.normalize = normalize
-    opt.rescaled = rescaled_method
+    opt.data_normalize = data_normalize
     opt.periode = opt.nt
-    relations, opt.relations_order = get_relations(data_dir, disease_name, k, normalize_method=normalize_method, relations_names=relations_names)
+    relations, opt.relations_order = get_relations(data_dir, disease_name, k, normalize_method=relation_normalize, relations_names=relations_names)
     train_data = data[:nt_train]
-    # print(train_data.shape)
-    # # new_data = data.detach()
-    # if rescaled_method == 'd':
-    #     opt.mean = []
-    #     opt.max = []
-    #     opt.min = []
-    #     for i in range(opt.nd):
-    #         processed_data = new_data[:,:, i]
-    #         processed_mean = processed_data.mean().item()
-    #         processed_max = processed_data.max().item()
-    #         processed_min = processed_data.min().item()
-    #         opt.mean.append(processed_mean)
-    #         opt.max.append(processed_max)
-    #         opt.min.append(processed_min)
-    #         new_data[:, :, i] = (processed_data - processed_mean) / (processed_max - processed_min)
-    # elif rescaled_method == 'x':
-    #     opt.mean = []
-    #     opt.max = []
-    #     opt.min = []
-    #     for i in range(opt.nx):
-    #         processed_data = new_data[:, i, :]
-    #         processed_mean = processed_data.mean().item()
-    #         processed_max = processed_data.max().item()
-    #         processed_min = processed_data.min().item()
-    #         opt.mean.append(processed_mean)
-    #         opt.max.append(processed_max)
-    #         opt.min.append(processed_min)
-    #         new_data[:, i, :] = (processed_data - processed_mean) / (processed_max - processed_min)
-    opt.mean = train_data.mean().item()
-    if normalize == 'max_min':
+    if normalize == 'max_min' and data_normalize != 'x':
+        opt.mean = train_data.mean().item()
         opt.min = train_data.min().item()
         opt.max = train_data.max().item()
         data = (data - opt.mean) / (opt.max-opt.min)
-    elif normalize == 'variance':
+    elif normalize == 'variance' and data_normalize != 'x':
+        opt.mean = train_data.mean().item()
         opt.std = torch.std(train_data).item()
         data = (data - opt.mean) / opt.std
+    elif normalize == 'variance' and data_normalize == 'x':
+        opt.std = []
+        opt.mean = []
+        for i in range(opt.nx):
+            std = torch.std(train_data[:, i,:]).item()
+            if std < 1e-3:
+                std = 1
+            mean = train_data[:, i,:].mean().item()
+            opt.std.append(std)
+            opt.mean.append(mean)
+            data[:, i,:] = (data[:, i,:] - mean) / std
+    elif normalize == 'max_min' and data_normalize == 'x':
+        opt.min = []
+        opt.max = []
+        opt.mean = []
+        for i in range(opt.nx):
+            mean_value = train_data[:, i,:].mean().item()
+            min_value = train_data[:, i,:].min().item()
+            max_value = train_data[:, i,:].max().item()
+            if (max_value - min_value) < 1e-3:
+                max_value = min_value + 1
+            opt.min.append(min_value)
+            opt.max.append(max_value)
+            opt.mean.append(mean_value)
+            data[:, i,:] = (data[:, i,:] - mean_value) / (max_value - min_value)
+
     opt.validation_length = validation_length
     test_data = data[nt_train:]
     train_data = data[:nt_train]
@@ -217,9 +216,25 @@ def get_keras_dataset(data_dir, disease_name, nt_train, seq_len, start_time=0, n
     test_input = data[nt_train - seq_len:nt_train]
     return opt, (train_input, train_output), (val_input, val_output), (test_input, test_data)
 
+def get_true(data, opt):
+    true_data = torch.zeros_like(data)
+    if opt.normalize == 'max_min' and opt.data_normalize != 'x':
+        true_data = data * (opt.max-opt.min) + opt.mean
+    elif opt.normalize == 'variance' and opt.data_normalize != 'x':
+        true_data = data * opt.std + opt.mean
+    elif opt.normalize == 'variance' and opt.data_normalize == 'x':
+        for i in range(opt.nx):
+            true_data[:, i,:] = data[:, i,:] * opt.std[i] + opt.mean[i]
+
+    elif opt.normalize == 'max_min' and opt.data_normalize == 'x':
+        for i in range(opt.nx):
+            true_data[:, i,:] = data[:, i,:] * (opt.max[i] - opt.min[i]) + opt.mean[i]
+    
+    return true_data
+
 if __name__ == "__main__":
     # print(get_time_data('data', 'ncov', 0).size())
-    print(get_keras_dataset('data', 'jar_increase', 7, 2, start_time=3)[1][0])
+    # print(get_keras_dataset('data', 'jar_increase', 7, 2, start_time=3)[1][0])
     # print(get_keras_dataset('data', 'jar_increase', 7, 2, start_time=3)
     # print(get_keras_dataset('data', 'jar_increase', 7, 2, start_time=3)
     # print(get_keras_dataset('data', 'jar_increase', 7, 2, start_time=3)
@@ -234,3 +249,11 @@ if __name__ == "__main__":
     # torch.Size([97, 29])
     # torch.Size([3, 29])
     # torch.Size([56, 29, 1])
+    # --- test stnn data ---
+    opt, (train_data, test_data, validation_data), relations = get_stnn_data('data', 'mar', 8, data_normalize='x')
+    true_train = get_true(train_data, opt)
+    test_true = get_true(test_data, opt)
+    data = torch.cat([true_train, test_true], dim=0)
+    train, _ = get_time_data('data', 'mar')
+    print(torch.norm(data - train))
+    

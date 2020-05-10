@@ -25,7 +25,7 @@ import torch.optim as optim
 import torch.backends.cudnn as cudnn
 
 
-from get_dataset import get_stnn_data
+from get_dataset import get_stnn_data, get_true
 from utils import DotDict, Logger, rmse, boolean_string, get_dir, get_time, time_dir, rmse_np, rmse_sum_confirmed
 from stnn import SaptioTemporalNN_input_simple
 
@@ -42,8 +42,8 @@ def train(command=False):
         p.add('--validation_length', type=int, help='validation/train', default=1)
         p.add('--validation_method', type=str, help='sum | torch', default='torch')
         p.add('--start_time', type=int, help='start time for data', default=0)
-        p.add('--rescaled', type=str, help='rescaled method', default='d')
-        p.add('--normalize_method', type=str, help='normalize method for relation', default='all')
+        p.add('--data_normalize', type=str, help='scaled method', default='x')
+        p.add('--relation_normalize', type=str, help='normalize method for relation', default='all')
         p.add('--relations', type=str, nargs='+', help='choose relations', default='all')
         p.add('--time_datas', type=str, nargs='+', help='choose time data', default='all')
         p.add('--increase', type=boolean_string, help='whether to use daily increase data', default=False)
@@ -107,7 +107,7 @@ def train(command=False):
         opt.nt_train = 15
         opt.start_time = 0
         opt.rescaled = 'd'
-        opt.normalize_method = 'row'
+        opt.relation_normalize = 'row'
         # -- xp
         opt.outputdir = 'default'
         opt.xp = 'stnn'
@@ -182,13 +182,18 @@ def train(command=False):
     #######################################################################################################################
     # -- load data
 
-    setup, (train_data, test_data, validation_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop, opt.start_time, rescaled_method=opt.rescaled, normalize_method=opt.normalize_method, relations_names=opt.relations, time_datas=opt.time_datas, validation_length=opt.validation_length)
+    setup, (train_data, test_data, validation_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop, opt.start_time, data_normalize=opt.data_normalize, relation_normalize=opt.relation_normalize, relations_names=opt.relations, time_datas=opt.time_datas, validation_length=opt.validation_length)
     # relations = relations[:, :, :, 0]
     train_data = train_data.to(device)
     test_data = test_data.to(device)
     relations = relations.to(device)
+    validation_data = validation_data.to(device)
+
     for k, v in setup.items():
         opt[k] = v
+
+    # --- get true validation ---
+    true_validation = get_true(validation_data, opt).to(device)
 
     # -- train inputs
     t_idx = torch.arange(opt.nt_train, out=torch.LongTensor()).unsqueeze(1).expand(opt.nt_train, opt.nx).contiguous()
@@ -239,8 +244,8 @@ def train(command=False):
     # Training
     #######################################################################################################################
     lr = opt.lr
-    opt.minrmse = 1e5
-    opt.minsum = 1e5
+    opt.minrmse = 1e8
+    opt.minsum = 1e8
     opt.min_rmse_epoch = 0
     opt.min_sum_epoch = 0
     if command:
@@ -328,8 +333,9 @@ def train(command=False):
             model.eval()
             with torch.no_grad():
                 x_pred, _ = model.generate(opt.validation_length)
-                opt.rmse_score = rmse(x_pred, validation_data)
-                opt.sum_score = rmse_sum_confirmed(x_pred, validation_data) / opt.validation_length
+                true_pred = get_true(x_pred, opt)
+                opt.rmse_score = rmse(true_pred, true_validation)
+                opt.sum_score = rmse_sum_confirmed(true_pred, true_validation) / x_pred.size(0)
             if command:
                 pb.set_postfix(loss=logs_train['train_loss'], test=opt.sum_score)
             else:
@@ -359,19 +365,22 @@ def train(command=False):
     with torch.no_grad():
         x_pred, _ = model.generate(opt.nt - opt.nt_train)
         score_ts = rmse(x_pred, test_data, reduce=False)
-        opt.final_rmse_score = rmse(x_pred, test_data)
-        opt.final_sum_score = rmse_sum_confirmed(x_pred, test_data) / x_pred.size(0)
+        opt.final_rmse_score = rmse(get_true(x_pred, opt), get_true(test_data, opt))
+        opt.final_sum_score = rmse_sum_confirmed(get_true(x_pred, opt), get_true(test_data, opt)) / opt.validation_length
 
     # logger.log('test.rmse', score)
     # logger.log('test.ts', {t: {'rmse': scr.item()} for t, scr in enumerate(score_ts)})
-    true_pred_data = torch.zeros_like(x_pred)
-    true_test_data = torch.zeros_like(test_data)
-    if opt.normalize == 'variance':
-        true_pred_data = x_pred * opt.std + opt.mean
-        true_test_data = test_data * opt.std + opt.mean
-    if opt.normalize == 'min_max':
-        true_pred_data = x_pred * (opt.max - opt.min) + opt.mean
-        true_test_data = test_data * (opt.max - opt.min) + opt.mean
+    # true_pred_data = torch.zeros_like(x_pred)
+    # true_test_data = torch.zeros_like(test_data)
+    # if opt.normalize == 'variance':
+    #     true_pred_data = x_pred * opt.std + opt.mean
+    #     true_test_data = test_data * opt.std + opt.mean
+    # if opt.normalize == 'min_max':
+    #     true_pred_data = x_pred * (opt.max - opt.min) + opt.mean
+    #     true_test_data = test_data * (opt.max - opt.min) + opt.mean
+
+    true_pred_data = get_true(x_pred, opt)
+    true_test_data = get_true(test_data, opt)
     true_score = rmse(true_pred_data, true_test_data)
     # print(true_pred_data)
 
@@ -395,6 +404,9 @@ def train(command=False):
         single_rel = final_relations[:, i]
         np.savetxt(os.path.join(get_dir(opt.outputdir), opt.xp, 'rel_' + rel_name + '.txt'), single_rel, delimiter=',')
     opt.true_loss = true_score
+    opt.train_loss = logs_train['train_loss']
+    opt.dec_loss = logs_train['mse_dec']
+    opt.dyn_loss = logs_train['dyn_loss']
     opt.train_loss = logs_train['train_loss']
     opt.end = time_dir()
     end_st = datetime.datetime.now()
