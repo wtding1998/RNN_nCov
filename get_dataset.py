@@ -216,19 +216,25 @@ def get_keras_dataset(data_dir, disease_name, nt_train, seq_len, start_time=0, n
     test_input = data[nt_train - seq_len:nt_train]
     return opt, (train_input, train_output), (val_input, val_output), (test_input, test_data)
 
-def get_true(data, opt):
-    true_data = torch.zeros_like(data)
-    if opt.normalize == 'max_min' and opt.data_normalize != 'x':
-        true_data = data * (opt.max-opt.min) + opt.mean
-    elif opt.normalize == 'variance' and opt.data_normalize != 'x':
-        true_data = data * opt.std + opt.mean
-    elif opt.normalize == 'variance' and opt.data_normalize == 'x':
-        for i in range(opt.nx):
-            true_data[:, i,:] = data[:, i,:] * opt.std[i] + opt.mean[i]
+def get_true(data, opt, use_torch=True):
+    new_opt = opt.copy()
+    if use_torch:
+        true_data = torch.zeros_like(data)
+    else:
+        true_data = np.zeros_like(data)
+    if 'data_normalize' not in opt.keys():
+        new_opt['data_normalize'] = None        
+    if new_opt['normalize'] == 'max_min' and new_opt['data_normalize'] != 'x':
+        true_data = data * (new_opt['max']-new_opt['min']) + new_opt['mean']
+    elif new_opt['normalize'] == 'variance' and new_opt['data_normalize'] != 'x':
+        true_data = data * new_opt['std'] + new_opt['mean']
+    elif new_opt['normalize'] == 'variance' and new_opt['data_normalize'] == 'x':
+        for i in range(new_opt['nx']):
+            true_data[:, i,:] = data[:, i,:] * new_opt['std'][i] + new_opt['mean'][i]
 
-    elif opt.normalize == 'max_min' and opt.data_normalize == 'x':
-        for i in range(opt.nx):
-            true_data[:, i,:] = data[:, i,:] * (opt.max[i] - opt.min[i]) + opt.mean[i]
+    elif new_opt['normalize'] == 'max_min' and new_opt['data_normalize'] == 'x':
+        for i in range(new_opt['nx']):
+            true_data[:, i,:] = data[:, i,:] * (new_opt['max'][i] - new_opt['min'][i]) + new_opt['mean'][i]
     
     return true_data
 

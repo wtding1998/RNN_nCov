@@ -1,0 +1,1 @@
+python train_stnn_test.py --rnn_model GRU_module --activation tanh --batch_size 100 --dataset mar_rnn_increase --increase True --lr 0.001 --manualSeed 1 --nhid 50 --nlayers 2 --nt_train 50 --start_time 0 --nepoch 5 & 

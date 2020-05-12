@@ -13,7 +13,7 @@ from keras.optimizers import SGD, RMSprop, adam
 import numpy as np
 from keras_model import *
 
-from get_dataset import get_keras_dataset
+from get_dataset import get_keras_dataset, get_true
 from utils import DotDict, Logger_keras, boolean_string, get_dir, get_time, time_dir, shuffle_list, rmse_np, rmse_np_like_torch
 
 
@@ -185,18 +185,19 @@ opt.rmse_score = rmse_np_like_torch(pred, test_data)
 opt.sum_score = np.linalg.norm(pred - test_data) / pred.shape[0]
 if opt.normalize == 'max_min':
     pred = pred * (opt.max - opt.min) + opt.mean
-    opt.true_rmse_loss = opt.rmse_score * (opt.max - opt.min)
-    opt.true_sum_loss = opt.sum_score * (opt.max - opt.min)
+    opt.final_rmse_loss = opt.rmse_score * (opt.max - opt.min)
+    opt.final_sum_loss = opt.sum_score * (opt.max - opt.min)
 
 if opt.normalize == 'variance':
     pred = pred * opt.std + opt.mean
-    opt.true_rmse_loss = opt.rmse_score * opt.std
-    opt.true_sum_loss = opt.sum_score * opt.std
+    opt.final_rmse_loss = opt.rmse_score * opt.std
+    opt.final_sum_loss = opt.sum_score * opt.std
 
 train_loss_history = model_history.history['loss']
 test_loss_history = model_history.history['val_loss']
 opt.minrmse = min(test_loss_history)
 opt.min_rmse_epoch = test_loss_history.index(opt.minrmse)
+opt.rmse_score = test_loss_history[-1]
 if opt.log:
     logger.log('train_loss.epoch', train_loss_history)
     logger.log('test_loss.epoch', test_loss_history)

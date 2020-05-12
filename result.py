@@ -1,18 +1,20 @@
 import json
 import os
+from collections import defaultdict
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas
 import torch
 
-from get_dataset import get_relations, get_time_data
+from get_dataset import get_relations, get_time_data, get_true
 from rnn_model import *
 from stnn import (SaptioTemporalNN_concat, SaptioTemporalNN_input,
                   SaptioTemporalNN_input_simple, SaptioTemporalNN_v0)
 from utils import (DotDict, Logger, boolean_string, get_dir, get_model,
                    get_time, model_dir, next_dir, normalize, rmse, rmse_np,
                    rmse_np_like_torch, rmse_tensor)
+from generate_scr import output_one
 
 # from keras.models import load_model
 
@@ -75,6 +77,7 @@ class Exp():
             self.model_name == self.config['rnn_model']
         self.nt = self.config['nt']
         self.nx = self.config['nx']
+        self.nd = self.config['nd']
         self.nz = self.config.get('nz')
         self.nt_train = self.config['nt_train']
         if 'increase' in self.config and self.config['increase']:
@@ -84,8 +87,10 @@ class Exp():
             self.increase = False
         # self.calculate_rmse_loss()
         self.config['sum_loss'] = self.pred_loss()
-        with open(os.path.join(self.path, self.exp_name, 'config.json'), 'w') as f:
-            json.dump(self.config, f, sort_keys=True, indent=4)
+        if ('normalize_method' not in self.config.keys()) and ('relation_normalize' in self.config.keys()):
+            self.config['normalize_method'] = self.config['relation_normalize']
+        # with open(os.path.join(self.path, self.exp_name, 'config.json'), 'w') as f:
+        #     json.dump(self.config, f, sort_keys=True, indent=4)
 
 
     def dataset_name(self):
@@ -352,11 +357,27 @@ class Exp():
         '''
         convert the scaled data into original scale
         '''
-        if self.config['normalize'] == 'variance':
-            true_data = data * self.config['std'] + self.config['mean']
-        if self.config['normalize'] == 'min_max':
-            true_data = data * (self.config['max'] - self.config['min']) + self.config['mean']
-        return true_data
+        normalize_config = {}
+        normalize_config['normalize'] = self.config['normalize']
+        normalize_config['nx'] = self.config['nx']
+        normalize_config['std'] = self.config.get('std', None)
+        normalize_config['mean'] = self.config.get('mean', None)
+        normalize_config['min'] = self.config.get('min', None)
+        normalize_config['max'] = self.config.get('max', None)
+        if 'data_normalize' not in self.config.keys():
+            normalize_config['data_normalize'] = 'd'
+        else:
+            normalize_config['data_normalize'] = self.config['data_normalize']
+
+        if normalize_config['data_normalize'] == 'x':
+            data = np.reshape(data, (-1, self.nx, self.nd))
+
+        # if self.config['normalize'] == 'variance' and self.config.get('data_normalize', 'd') == 'd':
+        #     true_data = data * self.config['std'] + self.config['mean']
+        # elif self.config['normalize'] == 'min_max' and self.config.get('data_normalize', 'd') == 'd':
+        #     true_data = data * (self.config['max'] - self.config['min']) + self.config['mean']
+        # elif self.config['normalize'] == 'variance' and self.config.get('data_normalize', 'd') == 'x':
+        return get_true(data, normalize_config, use_torch=False)
 
     def generate(self, nsteps, reduce=False, axis=0):
         model = self.model()
@@ -427,10 +448,11 @@ class Printer():
         df = pandas.DataFrame(df.values.T, index=df.columns, columns=df.index)
         if nt_train > 0:
             df = df.loc[df['nt_train'] == nt_train]
-        if increase:
-            df = df.loc[df['increase'] == True]
-        else:
-            df = df.loc[df['increase'] == False]
+        if 'increase' in df.columns:
+            if increase:
+                df = df.loc[df['increase'] == True]
+            else:
+                df = df.loc[df['increase'] == False]
         df = df[col]
         # df_list = []
         # for model_name in required_list: 
@@ -444,11 +466,11 @@ class Printer():
         if min:
             df.loc['min'] = df.apply(lambda x: x.min())
 
-        df['used_model'] = df.index
-        for i in range(len(df.index)):
-            exp_name = df.iloc[i, -1]
-            used_model = exp_name.split('-')[0]
-            df.iloc[i, -1] = used_model
+        # df['used_model'] = df.index
+        # for i in range(len(df.index)):
+        #     exp_name = df.iloc[i, -1]
+        #     used_model = exp_name.split('-')[0]
+        #     df.iloc[i, -1] = used_model
 
         return df
 
@@ -545,8 +567,11 @@ def plot_pred_by_dir(exp_dir, folder, line_time=0, title='Pred', dim=0, train=Fa
             pred_data = np.concatenate([train_pred, pred_data], axis=0)
         pred_dir[model_name] = pred_data
     data = exp.data_np(increase)
+    print(exp.config['dataset'])
     data_sum = data[:,:, dim].sum(1)
     plotted_dir = {}
+    if line_time < 0:
+        line_time = data_sum.shape[0] - nt_pred
     for model_name, pred in pred_dir.items():
         pred_sum = pred[:, :, dim].sum(1) # (nt_pred)
         if not train:
@@ -561,7 +586,6 @@ def plot_pred_by_dir(exp_dir, folder, line_time=0, title='Pred', dim=0, train=Fa
         line_time = nt - nt_pred -1
     # plt.rcParams['font.sans-serif'] = ['KaiTi'] # 指定默认字体
     # plt.rcParams['axes.unicode_minus'] = False
-
     fig = plt.figure()
     plt.grid()
     for model_name, pred_sum in plotted_dir.items():
@@ -574,6 +598,23 @@ def plot_pred_by_dir(exp_dir, folder, line_time=0, title='Pred', dim=0, train=Fa
     plt.show()
     return plotted_dir, data_sum
 
+def output_scr_by_dir(di, dir_path, minepoch='sum', write='w', model='stnn', configs=['test', 'activation', 'batch_size', 'dataset', 'increase', 'lambd', 'lr', 'manualSeed', 'mode', 'nhid', 'nlayers', 'nt_train', 'data_normalize', 'nz', 'sch_bound', 'start_time', 'validation_length', 'test', 'time_datas']):
+    if model == 'rnn':
+         configs=['rnn_model', 'activation', 'batch_size', 'dataset', 'increase', 'lr', 'manualSeed', 'nhid', 'nlayers', 'nt_train', 'start_time']
+    with open(r'small_dir.txt', write) as f:
+        for model_name, exp_name in di.items():
+            config_di = {}
+            exp_config = get_config(os.path.join(dir_path, exp_name))
+            config_di['model'] = model_name
+            # --- get useful info ---
+            for config in configs:
+                config_di[config] = exp_config[config] 
+            
+            # --- get epoch ---
+            config_di['nepoch'] = exp_config['min_' + minepoch + '_epoch'] + 1
+            # --- output command ---
+            output_one(config_di, f)
+            print(file=f)
 
 
 if __name__ == "__main__":
