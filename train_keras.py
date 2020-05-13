@@ -6,7 +6,6 @@ import datetime
 
 import configargparse
 from tqdm import trange
-import tensorflow as tf
 from keras.layers.core import Dense, Activation, Dropout
 from keras.layers.recurrent import LSTM, GRU
 from keras.models import Sequential, load_model
@@ -68,7 +67,6 @@ if opt.manualSeed is None:
     opt.manualSeed = random.randint(1, 10000)
 random.seed(opt.manualSeed)
 np.random.seed(opt.manualSeed)
-tf.set_random_seed(opt.manualSeed)
 #######################################################################################################################
 # Data
 #######################################################################################################################
