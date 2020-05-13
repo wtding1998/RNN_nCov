@@ -1,21 +1,22 @@
+import datetime
+import json
 import os
 import random
-from collections import defaultdict, OrderedDict
-import json
-import datetime
+from collections import OrderedDict, defaultdict
 
 import configargparse
-from tqdm import trange
-from keras.layers.core import Dense, Activation, Dropout
-from keras.layers.recurrent import LSTM, GRU
+import numpy as np
+from keras.layers.core import Activation, Dense, Dropout
+from keras.layers.recurrent import GRU, LSTM
 from keras.models import Sequential, load_model
 from keras.optimizers import SGD, RMSprop, adam
-import numpy as np
-from keras_model import *
+from tqdm import trange
+import tensorflow as tf
 
 from get_dataset import get_keras_dataset, get_true
-from utils import DotDict, Logger_keras, boolean_string, get_dir, get_time, time_dir, shuffle_list, rmse_np, rmse_np_like_torch
-
+from keras_model import *
+from utils import (DotDict, Logger_keras, boolean_string, get_dir, get_time,
+                   rmse_np, rmse_np_like_torch, shuffle_list, time_dir)
 
 
 #######################################################################################################################
@@ -67,6 +68,7 @@ if opt.manualSeed is None:
     opt.manualSeed = random.randint(1, 10000)
 random.seed(opt.manualSeed)
 np.random.seed(opt.manualSeed)
+tf.set_random_seed(opt.manualSeed)
 #######################################################################################################################
 # Data
 #######################################################################################################################
