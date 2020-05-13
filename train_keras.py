@@ -11,7 +11,7 @@ from keras.layers.recurrent import GRU, LSTM
 from keras.models import Sequential, load_model
 from keras.optimizers import SGD, RMSprop, adam
 from tqdm import trange
-import tensorflow as tf
+# import tensorflow as tf
 
 from get_dataset import get_keras_dataset, get_true
 from keras_model import *
@@ -68,7 +68,7 @@ if opt.manualSeed is None:
     opt.manualSeed = random.randint(1, 10000)
 random.seed(opt.manualSeed)
 np.random.seed(opt.manualSeed)
-tf.set_random_seed(opt.manualSeed)
+# tf.set_random_seed(opt.manualSeed)
 #######################################################################################################################
 # Data
 #######################################################################################################################
