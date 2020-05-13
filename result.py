@@ -87,11 +87,17 @@ class Exp():
             self.increase = False
         # self.calculate_rmse_loss()
         self.config['sum_loss'] = self.pred_loss()
+        # replace name
+        if 'final_rmse_score' not in self.config.keys():
+            self.config['final_rmse_score'] = self.config.get('final_rmse_loss', None)
+
+        if 'final_sum_score' not in self.config.keys():
+            self.config['final_sum_score'] = self.config.get('final_sum_loss', None)
+
         if ('normalize_method' not in self.config.keys()) and ('relation_normalize' in self.config.keys()):
             self.config['normalize_method'] = self.config['relation_normalize']
-        # with open(os.path.join(self.path, self.exp_name, 'config.json'), 'w') as f:
-        #     json.dump(self.config, f, sort_keys=True, indent=4)
-
+        with open(os.path.join(self.path, self.exp_name, 'config.json'), 'w') as f:
+            json.dump(self.config, f, sort_keys=True, indent=4)
 
     def dataset_name(self):
         folder_name = os.path.basename(os.path.normpath(self.path))
@@ -453,6 +459,13 @@ class Printer():
                 df = df.loc[df['increase'] == True]
             else:
                 df = df.loc[df['increase'] == False]
+
+        df['used_model'] = df.index
+        for i in range(len(df.index)):
+            exp_name = df.iloc[i, -1]
+            used_model = exp_name.split('-')[0]
+            df.iloc[i, -1] = used_model
+
         df = df[col]
         # df_list = []
         # for model_name in required_list: 
@@ -466,11 +479,7 @@ class Printer():
         if min:
             df.loc['min'] = df.apply(lambda x: x.min())
 
-        # df['used_model'] = df.index
-        # for i in range(len(df.index)):
-        #     exp_name = df.iloc[i, -1]
-        #     used_model = exp_name.split('-')[0]
-        #     df.iloc[i, -1] = used_model
+
 
         return df
 
@@ -560,6 +569,7 @@ def plot_pred_by_dir(exp_dir, folder, line_time=0, title='Pred', dim=0, train=Fa
     for model_name, exp_name in exp_dir.items():
         exp = Exp(exp_name, folder)
         pred_data = exp.pred(increase)
+        print(pred_data.shape)
         nt_pred = pred_data.shape[0]
         if train:
             train_pred = exp.train_pred()
@@ -600,7 +610,7 @@ def plot_pred_by_dir(exp_dir, folder, line_time=0, title='Pred', dim=0, train=Fa
 
 def output_scr_by_dir(di, dir_path, minepoch='sum', write='w', model='stnn', configs=['test', 'activation', 'batch_size', 'dataset', 'increase', 'lambd', 'lr', 'manualSeed', 'mode', 'nhid', 'nlayers', 'nt_train', 'data_normalize', 'nz', 'sch_bound', 'start_time', 'validation_length', 'test', 'time_datas']):
     if model == 'rnn':
-         configs=['rnn_model', 'activation', 'batch_size', 'dataset', 'increase', 'lr', 'manualSeed', 'nhid', 'nlayers', 'nt_train', 'start_time']
+         configs=['rnn_model', 'activation', 'batch_size', 'dataset', 'increase', 'lr', 'manualSeed', 'nhid', 'nlayers', 'nt_train', 'start_time', 'seq_length']
     with open(r'small_dir.txt', write) as f:
         for model_name, exp_name in di.items():
             config_di = {}
@@ -616,7 +626,12 @@ def output_scr_by_dir(di, dir_path, minepoch='sum', write='w', model='stnn', con
             output_one(config_di, f)
             print(file=f)
 
-
+def process_config(folder):
+    exp_names = os.listdir(folder)
+    for exp_name in exp_names:
+        exp = Exp(exp_name, folder)
+        print(exp_name)
+    
 if __name__ == "__main__":
     # === Test ===
 

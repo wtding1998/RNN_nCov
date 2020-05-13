@@ -1,1 +1,2 @@
-python train_stnn_test.py --rnn_model GRU_module --activation tanh --batch_size 100 --dataset mar_rnn_increase --increase True --lr 0.001 --manualSeed 1 --nhid 50 --nlayers 2 --nt_train 50 --start_time 0 --nepoch 5 & 
+python train_keras.py --outputdir best_mar3_rnn --rnn_model LSTM_module --activation tanh --batch_size 10 --dataset mar_rnn --increase False --lr 0.001 --manualSeed 5252 --nhid 100 --nlayers 2 --nt_train 68 --start_time 0 --seq_length 2 --nepoch 5011 
+python train_keras.py --outputdir best_mar3_rnn --rnn_model GRU_Linear --activation tanh --batch_size 10 --dataset mar_rnn --increase False --lr 0.001 --manualSeed 6053 --nhid 100 --nlayers 2 --nt_train 68 --start_time 0 --seq_length 10 --nepoch 2109 

@@ -6,6 +6,7 @@ import datetime
 
 import configargparse
 from tqdm import trange
+import tensorflow as tf
 from keras.layers.core import Dense, Activation, Dropout
 from keras.layers.recurrent import LSTM, GRU
 from keras.models import Sequential, load_model
@@ -28,7 +29,7 @@ p.add('--dataset', type=str, help='dataset name', default='mar_rnn')
 p.add('--normalize', type=str, help='normaize method : vairance | min_max', default='variance')
 p.add('--nt_train', type=int, help='time for training', default=50)
 p.add('--start_time', type=int, help='time for training', default=0)
-p.add('--increase', type=boolean_string, help='whether to use daily increase data', default=True)
+p.add('--increase', type=boolean_string, help='whether to use daily increase data', default=False)
 p.add('--reduce', type=boolean_string, help='whether to use daily increase data', default=True)
 
 # -- xp
@@ -67,8 +68,7 @@ if opt.manualSeed is None:
     opt.manualSeed = random.randint(1, 10000)
 random.seed(opt.manualSeed)
 np.random.seed(opt.manualSeed)
-
-
+tf.set_random_seed(opt.manualSeed)
 #######################################################################################################################
 # Data
 #######################################################################################################################
