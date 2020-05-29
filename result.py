@@ -569,7 +569,6 @@ def plot_pred_by_dir(exp_dir, folder, line_time=0, title='Pred', dim=0, train=Fa
     for model_name, exp_name in exp_dir.items():
         exp = Exp(exp_name, folder)
         pred_data = exp.pred(increase)
-        print(pred_data.shape)
         nt_pred = pred_data.shape[0]
         if train:
             train_pred = exp.train_pred()
