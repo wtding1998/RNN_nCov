@@ -42,6 +42,7 @@ def train(command=False):
         p.add('--validation_length', type=int, help='validation/train', default=1)
         p.add('--validation_method', type=str, help='sum | torch', default='torch')
         p.add('--start_time', type=int, help='start time for data', default=0)
+        p.add('--delete_time', type=int, help='delete time for data', default=0)
         p.add('--data_normalize', type=str, help='scaled method', default='x')
         p.add('--relation_normalize', type=str, help='normalize method for relation', default='all')
         p.add('--relations', type=str, nargs='+', help='choose relations', default='all')
@@ -182,7 +183,7 @@ def train(command=False):
     #######################################################################################################################
     # -- load data
 
-    setup, (train_data, test_data, validation_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop, opt.start_time, data_normalize=opt.data_normalize, relation_normalize=opt.relation_normalize, relations_names=opt.relations, time_datas=opt.time_datas, validation_length=opt.validation_length)
+    setup, (train_data, test_data, validation_data), relations = get_stnn_data(opt.datadir, opt.dataset, opt.nt_train, opt.khop, opt.start_time, opt.delete_time, data_normalize=opt.data_normalize, relation_normalize=opt.relation_normalize, relations_names=opt.relations, time_datas=opt.time_datas, validation_length=opt.validation_length)
     # relations = relations[:, :, :, 0]
     train_data = train_data.to(device)
     test_data = test_data.to(device)

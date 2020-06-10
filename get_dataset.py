@@ -6,7 +6,7 @@ import torch
 from utils import DotDict, normalize, normalize_all_row
 
 
-def get_time_data(data_dir, disease_name, start_time=0, time_datas='all', use_torch=True):
+def get_time_data(data_dir, disease_name, start_time=0, delete_time = 0, time_datas='all', use_torch=True):
     # data_dir = 'data', disease_name = 'ncov' 
     # return (nt, nx, nd) time series data
     time_data_dir = os.path.join(data_dir, disease_name, 'time_data')
@@ -21,7 +21,10 @@ def get_time_data(data_dir, disease_name, start_time=0, time_datas='all', use_to
         if len(new_data.shape) == 1:
             new_data = new_data[..., np.newaxis]
         data.append(new_data)
-    data = np.stack(data, axis=2)[start_time:]
+    if delete_time > 0:
+        data = np.stack(data, axis=2)[start_time: - delete_time]
+    else:
+        data = np.stack(data, axis=2)[start_time:]
     if use_torch:
         return torch.tensor(data).float(), [data_name.replace('.csv', '') for data_name in time_datas]
     else:
@@ -125,10 +128,10 @@ def get_multi_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0):
     test_data = data[nt_train:]
     return opt, (train_data, test_data), relations
 
-def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0, data_normalize='d', relation_normalize='all', normalize='variance', validation_length=1, relations_names='all', time_datas='all'):
+def get_stnn_data(data_dir, disease_name, nt_train, k=1, start_time=0, delete_time=0, data_normalize='d', relation_normalize='all', normalize='variance', validation_length=1, relations_names='all', time_datas='all'):
     # get dataset
     opt = DotDict()
-    data, opt.datas_order = get_time_data(data_dir, disease_name, start_time, time_datas=time_datas)
+    data, opt.datas_order = get_time_data(data_dir, disease_name, start_time, delete_time, time_datas=time_datas)
     opt.nt, opt.nx, opt.nd = data.size()
     opt.normalize = normalize
     opt.data_normalize = data_normalize
@@ -262,4 +265,3 @@ if __name__ == "__main__":
     data = torch.cat([true_train, test_true], dim=0)
     train, _ = get_time_data('data', 'mar')
     print(torch.norm(data - train))
-    
