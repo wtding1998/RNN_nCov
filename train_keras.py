@@ -10,6 +10,7 @@ from keras.layers.core import Activation, Dense, Dropout
 from keras.layers.recurrent import GRU, LSTM
 from keras.models import Sequential, load_model
 from keras.optimizers import SGD, RMSprop, adam
+from keras.callbacks import EarlyStopping
 from tqdm import trange
 # import tensorflow as tf
 
@@ -50,6 +51,7 @@ p.add('--rnn_model', type=str, help='choose rnn model : LSTM(GRU)_module | LSTM(
 p.add('--lr', type=float, help='learning rate', default=1e-3)
 p.add('--validation_ratio', type=float, help='validation rate', default=0.1)
 p.add('--clip_value', type=float, help='clip_value for learning', default=5.0)
+p.add('--patience', type=int, help='patience in early stopping', default=150)
 
 # -- learning
 p.add('--batch_size', type=int, default=10, help='batch size')
@@ -162,9 +164,12 @@ logger = Logger_keras(get_dir(opt.outputdir), opt.xp, opt.checkpoint_interval)
 #######################################################################################################################
 # Training
 #######################################################################################################################
+
+early_stopping = EarlyStopping(monitor='val_loss', patience=opt.patience, verbose=2)
+
 model_history = model.fit(
     train_input, train_output, validation_data=(val_input, val_output),
-    batch_size=opt.batch_size, epochs=opt.nepoch)
+    batch_size=opt.batch_size, epochs=opt.nepoch, callbacks=[early_stopping], verbose=2)
 
 #######################################################################################################################
 # Test
