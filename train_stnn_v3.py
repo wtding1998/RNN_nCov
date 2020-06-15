@@ -338,7 +338,7 @@ def train(command=False):
                 opt.rmse_score = rmse(true_pred, true_validation)
                 opt.sum_score = rmse_sum_confirmed(true_pred, true_validation) / x_pred.size(0)
             if command:
-                pb.set_postfix(loss=logs_train['train_loss'], test=opt.sum_score)
+                pb.set_postfix(loss=logs_train['train_loss'], sum=opt.sum_score, rmse=opt.rmse_score)
             else:
                 print(e, 'loss=', logs_train['train_loss'], 'test=', opt.sum_score)
             if opt.log:
@@ -351,8 +351,8 @@ def train(command=False):
                 opt.minsum = opt.sum_score
                 opt.min_sum_epoch = e
                 # schedule lr
-            if opt.patience > 0 and opt.sum_score < opt.sch_bound:
-                lr_scheduler.step(opt.sum_score)
+            if opt.patience > 0 and opt.rmse_score < opt.sch_bound:
+                lr_scheduler.step(opt.rmse_score)
             lr = optimizer.param_groups[0]['lr']
             if lr <= 1e-5:
                 break

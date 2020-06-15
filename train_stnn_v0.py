@@ -360,8 +360,8 @@ def train(command=False):
                 opt.minrmse = opt.rmse_score
                 opt.min_rmse_epoch = e
                 # schedule lr
-            if opt.patience > 0 and opt.sum_score < opt.sch_bound:
-                lr_scheduler.step(opt.sum_score)
+            if opt.patience > 0 and opt.rmse_score < opt.sch_bound:
+                lr_scheduler.step(opt.rmse_score)
             lr = optimizer.param_groups[0]['lr']
             if lr <= 1e-5:
                 break
