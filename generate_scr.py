@@ -52,12 +52,12 @@ if __name__ == "__main__":
     p.add('--dataset', type=str, help='dataset', default='jar')
     p.add('--time_datas', type=str, help='dataset', default='confirmed')
     p.add('--outputdir', type=str, help='outputdir', default='jar3')
-    p.add('--nt_pred', type=int, help='time to pred', default=7)
+    p.add('--nt_pred', type=int, help='time to pred', default=3)
     p.add('--increase', type=boolean_string, help='increase', default=False)
     p.add('--test', type=boolean_string, help='test', default=True)
     p.add('--log', type=boolean_string, help='log', default=True)
-    p.add('--model', type=str, help='model', default='v0')
-    p.add('--activation', type=str, nargs='+', help='activation', default=['tanh', 'sigmoid', 'relu'])
+    p.add('--model', type=str, help='model', default='classical')
+    p.add('--activation', type=str, nargs='+', help='activation', default=['tanh', 'sigmoid'])
     p.add('--nlayers', type=int, nargs='+',help='time to pred', default=[1])
     p.add('--nhid', type=int,nargs='+', help='time to pred', default=[0])
     p.add('--nz', type=int,nargs='+', help='time to pred', default=[10, 40])
@@ -69,6 +69,6 @@ if __name__ == "__main__":
     p.add('--data_normalize', type=str, default='d')
 
 
-    f = open(r'scr_output.txt', 'w')
+    f = open(r'scr_output.txt', 'a')
     opt = DotDict(vars(p.parse_args()))
     print_scr(opt, f)
