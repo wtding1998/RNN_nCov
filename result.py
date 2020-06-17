@@ -147,14 +147,14 @@ class Exp():
 
         if increase:
             if 'time_datas' in self.config.keys():
-                data, _ = get_time_data(self.config['datadir'], dataset+'_increase', self.config['start_time'], self.config['time_datas'], use_torch=True)
+                data, _ = get_time_data(self.config['datadir'], dataset+'_increase', self.config['start_time'], self.config.get('delete_time, 0'), self.config['time_datas'], use_torch=True)
             else:
-                data, _ = get_time_data(self.config['datadir'], dataset+'_increase', self.config['start_time'], 'all', use_torch=True)
+                data, _ = get_time_data(self.config['datadir'], dataset+'_increase', self.config['start_time'], self.config.get('delete_time, 0'), 'all', use_torch=True)
         else:
             if 'time_datas' in self.config.keys():
-                data, _ = get_time_data(self.config['datadir'], dataset, self.config['start_time'], self.config['time_datas'], use_torch=True)
+                data, _ = get_time_data(self.config['datadir'], dataset, self.config['start_time'], self.config.get('delete_time, 0'), self.config['time_datas'], use_torch=True)
             else:
-                data, _ = get_time_data(self.config['datadir'], dataset, self.config['start_time'], 'all', use_torch=True)
+                data, _ = get_time_data(self.config['datadir'], dataset, self.config['start_time'], self.config.get('delete_time, 0'), 'all', use_torch=True)
         return data
 
     def data_np(self, increase=False):
@@ -165,14 +165,14 @@ class Exp():
 
         if increase:
             if 'time_datas' in self.config.keys():
-                data, _ = get_time_data(self.config['datadir'], dataset + '_increase', self.config['start_time'], self.config['time_datas'], use_torch=False)
+                data, _ = get_time_data(self.config['datadir'], dataset + '_increase', self.config['start_time'], self.config.get('delete_time, 0'), self.config['time_datas'], use_torch=False)
             else:
-                data, _ = get_time_data(self.config['datadir'], dataset + '_increase', self.config['start_time'], 'all', use_torch=False)
+                data, _ = get_time_data(self.config['datadir'], dataset + '_increase', self.config['start_time'], self.config.get('delete_time, 0'), 'all', use_torch=False)
         else:
             if 'time_datas' in self.config.keys():
-                data, _ = get_time_data(self.config['datadir'], dataset, self.config['start_time'], self.config['time_datas'], use_torch=False)
+                data, _ = get_time_data(self.config['datadir'], dataset, self.config['start_time'], self.config.get('delete_time, 0'), self.config['time_datas'], use_torch=False)
             else:
-                data, _ = get_time_data(self.config['datadir'], dataset, self.config['start_time'], 'all', use_torch=False)
+                data, _ = get_time_data(self.config['datadir'], dataset, self.config['start_time'], self.config.get('delete_time, 0'), 'all', use_torch=False)
         return data
     
     def pred_loss(self, reduce=True, increase=False):
@@ -318,7 +318,7 @@ class Exp():
         '''
         # --- calculate prediction ---
         print('generate prediction for', self.exp_name)
-        data, datas_name = get_time_data('data', self.config['dataset'].replace('_increase', ''), start_time=self.config['start_time'], time_datas=self.config.get('time_datas', ['confirmed']), use_torch=False) 
+        data, datas_name = get_time_data('data', self.config['dataset'].replace('_increase', ''), start_time=self.config['start_time'], delete_time=self.config.get('end_time, 0'), time_datas=self.config.get('time_datas', ['confirmed']), use_torch=False) 
         increase_data = self.pred(increase=True) # (nt_pred, 1, nd)
         nt_pred = increase_data.shape[0]
         # --- add nt_pred in config ---
