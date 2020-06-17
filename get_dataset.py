@@ -21,6 +21,7 @@ def get_time_data(data_dir, disease_name, start_time=0, delete_time = 0, time_da
         if len(new_data.shape) == 1:
             new_data = new_data[..., np.newaxis]
         data.append(new_data)
+    print(delete_time)
     if delete_time > 0:
         data = np.stack(data, axis=2)[start_time: - delete_time]
     else:
