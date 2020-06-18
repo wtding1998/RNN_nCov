@@ -4,6 +4,57 @@ from keras.models import Sequential, load_model
 from keras.optimizers import SGD, RMSprop, Adam
 import numpy as np
 
+class LSTM_module_cl():
+    def __init__(self, ninput, nhid, nlayers, nout, test_input, nx, nd, activation='relu', lr=1e-3, dropout=0.5):
+        assert (nlayers > 0)
+        self.ninput = ninput
+        self.nhid = nhid
+        self.nlayers = nlayers
+        self.nout = nout
+        self.activation = activation
+        self.lr = lr
+        self.dropout = dropout
+        self.test_input = test_input
+        self.nx = nx
+        self.nd = nd
+        self.network = self.init_network()
+
+    def init_network(self):
+        network=Sequential()
+        if self.nlayers == 1:
+            network.add(LSTM(
+                self.nhid,
+                input_shape=(None, self.ninput),
+                return_sequences=False))
+        else:
+            network.add(LSTM(
+                self.nhid,
+                input_shape=(None, self.ninput),
+                return_sequences=True))
+            for i in range(self.nlayers - 2):
+                network.add(LSTM(
+                    self.nhid,
+                    return_sequences=True))
+            network.add(LSTM(
+                self.nhid,
+                return_sequences=False))
+        network.add(Dense(self.nout))
+        network.add(Activation(self.activation))
+        network.compile(loss="mse", optimizer=Adam(lr=self.lr))
+        return network
+
+    def generate(self, nsteps):
+        pred = []
+        last_sequence = self.test_input[np.newaxis, ...]
+        for i in range(nsteps):
+            new_pred = self.network.predict(last_sequence)
+            pred.append(new_pred)
+            new_pred = new_pred[np.newaxis, ...]
+            last_sequence = np.concatenate([last_sequence[:, 1:, :], new_pred], axis=1)
+        pred = np.concatenate(pred, axis=0)
+        pred = np.reshape(pred, (nsteps, self.nx, self.nd))
+        return pred
+
 def LSTM_module(ninput, nhid, nlayers, nout, activation='relu', lr=1e-3, dropout=0.5):
     assert (nlayers > 0)
     model=Sequential()
@@ -161,4 +212,3 @@ if __name__ == "__main__":
 #             opt.nhid,
 #             return_sequences=False))
 # model.add(Dropout(opt.dropout))
-

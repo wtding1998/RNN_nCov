@@ -106,8 +106,9 @@ if opt.rnn_model == 'GRU_module':
     model = GRU_module(opt.nx*opt.nd, opt.nhid, opt.nlayers, opt.nx*opt.nd, activation=opt.activation, lr=opt.lr, dropout=opt.dropout)
 
 if opt.rnn_model == 'LSTM_module':
-    model = LSTM_module(opt.nx*opt.nd, opt.nhid, opt.nlayers, opt.nx*opt.nd, activation=opt.activation, lr=opt.lr, dropout=opt.dropout)
-
+    # model = LSTM_module(opt.nx*opt.nd, opt.nhid, opt.nlayers, opt.nx*opt.nd, activation=opt.activation, lr=opt.lr, dropout=opt.dropout)
+    model = LSTM_module_cl(opt.nx*opt.nd, opt.nhid, opt.nlayers, opt.nx*opt.nd, test_input, opt.nx, opt.nd, activation=opt.activation, lr=opt.lr, dropout=opt.dropout)
+    
 if opt.rnn_model == 'GRU_Linear':
     model = GRU_Linear(opt.nx*opt.nd, opt.nhid, opt.nlayers, opt.nx*opt.nd, activation=opt.activation, lr=opt.lr, dropout=opt.dropout)
 
@@ -167,7 +168,7 @@ logger = Logger_keras(get_dir(opt.outputdir), opt.xp, opt.checkpoint_interval)
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=opt.patience, verbose=2)
 
-model_history = model.fit(
+model_history = model.network.fit(
     train_input, train_output, validation_data=(val_input, val_output),
     batch_size=opt.batch_size, epochs=opt.nepoch, callbacks=[early_stopping], verbose=2)
 
@@ -175,15 +176,16 @@ model_history = model.fit(
 # Test
 #######################################################################################################################
 # generate pred
-pred = []
-last_sequence = test_input[np.newaxis, ...]
-for i in range(opt.nt - opt.nt_train):
-    new_pred = model.predict(last_sequence)
-    pred.append(new_pred)
-    new_pred = new_pred[np.newaxis, ...]
-    last_sequence = np.concatenate([last_sequence[:, 1:, :], new_pred], axis=1)
-pred = np.concatenate(pred, axis=0)
-pred = np.reshape(pred, (opt.nt - opt.nt_train, opt.nx, opt.nd))
+# pred = []
+# last_sequence = test_input[np.newaxis, ...]
+# for i in range(opt.nt - opt.nt_train):
+#     new_pred = model.predict(last_sequence)
+#     pred.append(new_pred)
+#     new_pred = new_pred[np.newaxis, ...]
+#     last_sequence = np.concatenate([last_sequence[:, 1:, :], new_pred], axis=1)
+# pred = np.concatenate(pred, axis=0)
+# pred = np.reshape(pred, (opt.nt - opt.nt_train, opt.nx, opt.nd))
+pred = model.generate(opt.nt - opt.nt_train)
 test_data = np.reshape(test_data, (opt.nt - opt.nt_train, opt.nx, opt.nd))
 # print(pred)
 opt.rmse_score = rmse_np_like_torch(pred, test_data)
@@ -215,7 +217,7 @@ opt.time = str(end_st - start_st)
 with open(os.path.join(get_dir(opt.outputdir), opt.xp, 'config.json'), 'w') as f:
     json.dump(opt, f, sort_keys=True, indent=4)
 
-logger.save(model)
+logger.save(model.network)
 if opt.increase:
     for i, time_data in enumerate(opt.datas_order):
         d_pred = pred[:,:, i]
