@@ -10,7 +10,8 @@ import torch
 from get_dataset import get_relations, get_time_data, get_true
 from rnn_model import *
 from stnn import (SaptioTemporalNN_concat, SaptioTemporalNN_input,
-                  SaptioTemporalNN_input_simple, SaptioTemporalNN_v0)
+                  SaptioTemporalNN_input_simple, SaptioTemporalNN_v0,
+                  SaptioTemporalNN_classical)
 from utils import (DotDict, Logger, boolean_string, get_dir, get_model,
                    get_time, model_dir, next_dir, normalize, rmse, rmse_np,
                    rmse_np_like_torch, rmse_tensor)
@@ -116,6 +117,12 @@ class Exp():
     def model(self):
         # if (self.model_name == 'LSTM') or (self.model_name == 'GRU'):
         #     model = load_model(os.path.join(self.path, self.exp_name, 'model.h5'))
+        # todo: add RNN model
+        print('Load', self.model_name, 'model.')
+        if self.model_name == 'classical':
+            model = SaptioTemporalNN_classical(self.relations(), self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],
+                        self.config['dropout_f'], self.config['dropout_d'], self.config['activation'], self.config['periode'])
+            model.load_state_dict(torch.load(os.path.join(self.path, self.exp_name, 'model.pt')))
 
         if self.model_name == 'ori':
             model = SaptioTemporalNN_v0(self.relations(), self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],
@@ -123,23 +130,22 @@ class Exp():
             model.load_state_dict(torch.load(os.path.join(self.path, self.exp_name, 'model.pt')))
 
         if self.model_name == 'v1':
-            model = SaptioTemporalNN_concat(self.relations(), self.data_torch()[:self.config['nt_train']], self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],
+            model = SaptioTemporalNN_concat(self.relations(), self.data_torch(normalized=True)[:self.config['nt_train']], self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],
                         self.config['dropout_f'], self.config['dropout_d'], self.config['activation'], self.config['periode'])
             model.load_state_dict(torch.load(os.path.join(self.path, self.exp_name, 'model.pt')))
             
         if self.model_name == 'v2':
-            model = SaptioTemporalNN_input(self.relations(), self.data_torch()[:self.config['nt_train']], self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],
+            model = SaptioTemporalNN_input(self.relations(), self.data_torch(normalized=True)[:self.config['nt_train']], self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],
                         self.config['dropout_f'], self.config['dropout_d'], self.config['activation'], self.config['periode'], self.config['simple_dec'])
             model.load_state_dict(torch.load(os.path.join(self.path, self.exp_name, 'model.pt')))
 
         if self.model_name == 'v3':
-            model = SaptioTemporalNN_input_simple(self.relations(), self.data_torch()[:self.config['nt_train']], self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],
+            model = SaptioTemporalNN_input_simple(self.relations(), self.data_torch(normalized=True)[:self.config['nt_train']], self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],
                         self.config['dropout_f'], self.config['dropout_d'], self.config['activation'], self.config['periode'])
             model.load_state_dict(torch.load(os.path.join(self.path, self.exp_name, 'model.pt')))
-
         return model
 
-    def data_torch(self, increase=False):
+    def data_torch(self, increase=False, normalized=False):
         if self.increase:
             dataset = self.config['dataset'].replace('_increase', '')
         else:
@@ -155,6 +161,20 @@ class Exp():
                 data, _ = get_time_data(data_dir=self.config['datadir'], disease_name=dataset, start_time=self.config['start_time'], delete_time=self.config.get('delete_time', 0), time_datas=self.config['time_datas'], use_torch=True)
             else:
                 data, _ = get_time_data(data_dir=self.config['datadir'], disease_name=dataset, start_time=self.config['start_time'], delete_time=self.config.get('delete_time', 0), time_datas='all', use_torch=True)
+
+        if normalized:
+            if self.config['normalize'] == 'max_min' and self.config['data_normalize'] != 'x':
+                data = (data - self.config['mean']) / (self.config['max']-self.config['min'])
+            elif self.config['normalize'] == 'variance' and self.config['data_normalize'] != 'x':
+                self.config['mean'] = train_data.mean().item()
+                self.config['std'] = torch.std(train_data).item()
+                data = (data - self.config['mean']) / self.config['std']
+            elif self.config['normalize'] == 'variance' and self.config['data_normalize'] == 'x':
+                for i in range(self.config['nx']):
+                    data[:, i,:] = (data[:, i,:] - self.config['mean'][i]) / self.config['std'][i]
+            elif self.config['normalize'] == 'max_min' and self.config['data_normalize'] == 'x':
+                for i in range(self.config['nx']):
+                    data[:, i,:] = (data[:, i,:] - self.config['mean'][i]) / (self.config['max'][i] - self.config['min'][i])
         return data
 
     def data_np(self, increase=False):
@@ -162,7 +182,6 @@ class Exp():
             dataset = self.config['dataset'].replace('_increase', '')
         else:
             dataset = self.config['dataset']
-
         if increase:
             if 'time_datas' in self.config.keys():
                 data, _ = get_time_data(data_dir=self.config['datadir'], disease_name=dataset + '_increase', start_time=self.config['start_time'], delete_time=self.config.get('delete_time', 0), time_datas=self.config['time_datas'], use_torch=False)
@@ -318,7 +337,7 @@ class Exp():
         '''
         # --- calculate prediction ---
         print('generate prediction for', self.exp_name)
-        data, datas_name = get_time_data('data', self.config['dataset'].replace('_increase', ''), start_time=self.config['start_time'], delete_time=self.config.get('end_time', 0), time_datas=self.config.get('time_datas', ['confirmed']), use_torch=False) 
+        data, datas_name = get_time_data('data', self.config['dataset'].replace('_increase', ''), start_time=self.config['start_time'], delete_time=self.config.get('delete_time', 0), time_datas=self.config.get('time_datas', ['confirmed']), use_torch=False) 
         increase_data = self.pred(increase=True) # (nt_pred, 1, nd)
         nt_pred = increase_data.shape[0]
         # --- add nt_pred in config ---
@@ -390,7 +409,6 @@ class Exp():
         x, z = model.generate(nsteps)
         x = x[:, :, axis].detach().numpy()
         z = z.detach().numpy()
-        # x = x.sum(1)
         return self.rescaled(x), z
 
     def plot_distribution(self, start_time=0):
@@ -421,6 +439,31 @@ class Exp():
         plt.imshow(error.T)
         plt.title('Error')
         plt.colorbar()
+
+    def get_time_staps(self, dataset):
+        dataset_start_time = {'jar': 0, 'feb': 8, 'mar': 37}
+        return dataset_start_time[dataset]
+
+    def test_loss(self, nt_test):
+        # --- load model and pred ---
+        validation_length = self.config['validation_length']
+        val_test, _ = self.generate(validation_length + nt_test)
+        val_test = np.squeeze(val_test)
+        val_pred = val_test[:validation_length]
+        test_pred = val_test[validation_length:]
+        # --- get ground_truth_data ---
+        start_stamp = self.get_time_staps(self.config['dataset'])
+        total_data, _ = get_time_data('data', 'total_data', start_time=start_stamp+self.config['start_time'], delete_time=self.config.get('end_time', 0), time_datas=self.config.get('time_datas', ['confirmed']), use_torch=False)
+        total_data = np.squeeze(total_data)
+        nt_train = self.config['nt_train']
+        val_true = total_data[nt_train:nt_train + validation_length]
+        # test_true = total_data[nt_train + validation_length:nt_train + validation_length + nt_test]    
+        val_loss = rmse_np_like_torch(val_pred, val_true)
+        print('val_loss:', val_loss)
+        assert np.abs(val_loss - self.config['final_rmse_score']) < 0.5
+        # --- save test pred ---
+        # test_loss = rmse_np_like_torch(test_pred, test_true)
+        return test_loss
 
 class Printer():
     def __init__(self, folder):
@@ -478,9 +521,6 @@ class Printer():
             df.loc['mean'] = df.apply(lambda x: x.mean())
         if min:
             df.loc['min'] = df.apply(lambda x: x.min())
-
-
-
         return df
 
     def min_idx(self, col=['test_loss', 'train_loss', 'nhid', 'nlayers'], required_list = 'all'):
@@ -651,11 +691,18 @@ if __name__ == "__main__":
     # exp.plot_relations()
 
     # --- test increase data ---
-    path = 'D:/Jupyter_Documents/ML-code/research_code/output/test_fli'
-    exp_name = 'ori-stnn_00-06-05-04-56'
-    exp_dir = {'test': exp_name}
+    # path = 'D:/Jupyter_Documents/ML-code/research_code/output/test_fli'
+    # exp_name = 'ori-stnn_00-06-05-04-56'
+    # exp_dir = {'test': exp_name}
     # exp_name = 'v2-stnn_05-03-00-05-59_0251'
     # exp = Exp(exp_name, path)
     # print(exp.plot_train_times().shape)
     # pred_dir,data = get_pred(exp_dir, path, train=False)
-    plot_pred_by_dir(exp_dir, path, increase=False)
+    # plot_pred_by_dir(exp_dir, path, increase=False)
+
+
+    # --- test test loss ---
+    path = 'D:/Jupyter_Documents/ML-code/research_code/output/mar_None'
+    exp_name = 'v3-stnn_06-18-20-24-57_2411'
+    exp = Exp(exp_name, path)
+    exp.test_loss(7)
