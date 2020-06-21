@@ -80,6 +80,59 @@ def LSTM_module(ninput, nhid, nlayers, nout, activation='relu', lr=1e-3, dropout
     model.compile(loss="mse", optimizer=Adam(lr=lr))
     return model
 
+class GRU_module_cl():
+    def __init__(self, ninput, nhid, nlayers, nout, test_input, nx, nd, activation='relu', lr=1e-3, dropout=0.5):
+        assert (nlayers > 0)
+        self.ninput = ninput
+        self.nhid = nhid
+        self.nlayers = nlayers
+        self.nout = nout
+        self.activation = activation
+        self.lr = lr
+        self.dropout = dropout
+        self.test_input = test_input
+        self.nx = nx
+        self.nd = nd
+        self.network = self.init_network()
+
+    def init_network(self):
+        network=Sequential()
+        if self.nlayers == 1:
+            network.add(GRU(
+                self.nhid,
+                input_shape=(None, self.ninput),
+                return_sequences=False))
+        else:
+            network.add(GRU(
+                self.nhid,
+                input_shape=(None, self.ninput),
+                return_sequences=True))
+            for i in range(self.nlayers - 2):
+                network.add(GRU(
+                    self.nhid,
+                    return_sequences=True))
+            network.add(GRU(
+                self.nhid,
+                return_sequences=False))
+        network.add(Dense(self.nout))
+        network.add(Activation(self.activation))
+        network.compile(loss="mse", optimizer=Adam(lr=self.lr))
+        return network
+
+    def generate(self, nsteps):
+        pred = []
+        last_sequence = self.test_input[np.newaxis, ...]
+        for i in range(nsteps):
+            new_pred = self.network.predict(last_sequence)
+            pred.append(new_pred)
+            new_pred = new_pred[np.newaxis, ...]
+            last_sequence = np.concatenate([last_sequence[:, 1:, :], new_pred], axis=1)
+        pred = np.concatenate(pred, axis=0)
+        pred = np.reshape(pred, (nsteps, self.nx, self.nd))
+        return pred
+
+
+
 def GRU_module(ninput, nhid, nlayers, nout, activation='relu', lr=1e-3, dropout=0.5):
     assert (nlayers > 0)
     model=Sequential()
@@ -104,6 +157,64 @@ def GRU_module(ninput, nhid, nlayers, nout, activation='relu', lr=1e-3, dropout=
     model.add(Activation(activation))
     model.compile(loss="mse", optimizer=RMSprop(lr=lr))
     return model
+
+class LSTM_Linear_cl():
+    def __init__(self, ninput, nhid, nlayers, nout, test_input, nx, nd, activation='relu', lr=1e-3, dropout=0.5):
+        assert (nlayers > 0)
+        self.ninput = ninput
+        self.nhid = nhid
+        self.nlayers = nlayers
+        self.nout = nout
+        self.activation = activation
+        self.lr = lr
+        self.dropout = dropout
+        self.test_input = test_input
+        self.nx = nx
+        self.nd = nd
+        self.network = self.init_network()
+
+    def init_network(self):
+        network=Sequential()
+        if nlayers == 1:
+            network.add(LSTM(
+                nhid,
+                input_shape=(None, ninput),
+                return_sequences=False))
+        else:
+            network.add(LSTM(
+                nhid,
+                input_shape=(None, ninput),
+                return_sequences=True))
+            network.add(Dense(nhid))
+            network.add(Activation(activation))
+            network.add(Dropout(dropout))
+            for i in range(nlayers - 2):
+                network.add(LSTM(
+                    nhid,
+                    return_sequences=True))
+                network.add(Dense(nhid))
+                network.add(Activation(activation))
+                network.add(Dropout(dropout))
+
+            network.add(LSTM(
+                nhid,
+                return_sequences=False))
+        network.add(Dense(nout))
+        network.add(Activation(activation))
+        network.compile(loss="mse", optimizer=RMSprop(lr=lr))
+        return network
+
+    def generate(self, nsteps):
+        pred = []
+        last_sequence = self.test_input[np.newaxis, ...]
+        for i in range(nsteps):
+            new_pred = self.network.predict(last_sequence)
+            pred.append(new_pred)
+            new_pred = new_pred[np.newaxis, ...]
+            last_sequence = np.concatenate([last_sequence[:, 1:, :], new_pred], axis=1)
+        pred = np.concatenate(pred, axis=0)
+        pred = np.reshape(pred, (nsteps, self.nx, self.nd))
+        return pred
 
 def LSTM_Linear(ninput, nhid, nlayers, nout, activation='relu', lr=1e-3, dropout=0.5):
     assert (nlayers > 0)
@@ -136,6 +247,64 @@ def LSTM_Linear(ninput, nhid, nlayers, nout, activation='relu', lr=1e-3, dropout
     model.add(Activation(activation))
     model.compile(loss="mse", optimizer=RMSprop(lr=lr))
     return model
+
+class GRU_Linear_cl():
+    def __init__(self, ninput, nhid, nlayers, nout, test_input, nx, nd, activation='relu', lr=1e-3, dropout=0.5):
+        assert (nlayers > 0)
+        self.ninput = ninput
+        self.nhid = nhid
+        self.nlayers = nlayers
+        self.nout = nout
+        self.activation = activation
+        self.lr = lr
+        self.dropout = dropout
+        self.test_input = test_input
+        self.nx = nx
+        self.nd = nd
+        self.network = self.init_network()
+
+    def init_network(self):
+        network=Sequential()
+        if nlayers == 1:
+            network.add(GRU(
+                nhid,
+                input_shape=(None, ninput),
+                return_sequences=False))
+        else:
+            network.add(GRU(
+                nhid,
+                input_shape=(None, ninput),
+                return_sequences=True))
+            network.add(Dense(nhid))
+            network.add(Activation(activation))
+            network.add(Dropout(dropout))
+            for i in range(nlayers - 2):
+                network.add(GRU(
+                    nhid,
+                    return_sequences=True))
+                network.add(Dense(nhid))
+                network.add(Activation(activation))
+                network.add(Dropout(dropout))
+
+            network.add(GRU(
+                nhid,
+                return_sequences=False))
+        network.add(Dense(nout))
+        network.add(Activation(activation))
+        network.compile(loss="mse", optimizer=RMSprop(lr=lr))
+        return network
+
+    def generate(self, nsteps):
+        pred = []
+        last_sequence = self.test_input[np.newaxis, ...]
+        for i in range(nsteps):
+            new_pred = self.network.predict(last_sequence)
+            pred.append(new_pred)
+            new_pred = new_pred[np.newaxis, ...]
+            last_sequence = np.concatenate([last_sequence[:, 1:, :], new_pred], axis=1)
+        pred = np.concatenate(pred, axis=0)
+        pred = np.reshape(pred, (nsteps, self.nx, self.nd))
+        return pred
 
 def GRU_Linear(ninput, nhid, nlayers, nout, activation='relu', lr=1e-3, dropout=0.5):
     assert (nlayers > 0)
