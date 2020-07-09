@@ -12,7 +12,7 @@ from keras.models import Sequential, load_model
 from keras.optimizers import SGD, RMSprop, adam
 from keras.callbacks import EarlyStopping
 from tqdm import trange
-from tensorflow import set_random_seed
+# from tensorflow import set_random_seed
 # import tensorflow as tf
 
 from get_dataset import get_keras_dataset, get_true
@@ -71,7 +71,7 @@ if opt.manualSeed is None:
     opt.manualSeed = random.randint(1, 10000)
 random.seed(opt.manualSeed)
 np.random.seed(opt.manualSeed)
-set_random_seed(opt.manualSeed)
+# set_random_seed(opt.manualSeed)
 #######################################################################################################################
 # Data
 #######################################################################################################################
