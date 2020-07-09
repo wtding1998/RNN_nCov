@@ -12,6 +12,7 @@ from keras.models import Sequential, load_model
 from keras.optimizers import SGD, RMSprop, adam
 from keras.callbacks import EarlyStopping
 from tqdm import trange
+from tensorflow import set_random_seed
 # import tensorflow as tf
 
 from get_dataset import get_keras_dataset, get_true
@@ -31,7 +32,7 @@ p.add('--normalize', type=str, help='normaize method : vairance | min_max', defa
 p.add('--nt_train', type=int, help='time for training', default=50)
 p.add('--start_time', type=int, help='time for training', default=0)
 p.add('--increase', type=boolean_string, help='whether to use daily increase data', default=False)
-p.add('--reduce', type=boolean_string, help='whether to use daily increase data', default=True)
+p.add('--reduce', type=boolean_string, help='whether to use every province data', default=True)
 
 # -- xp
 p.add('--outputdir', type=str, help='path to save xp', default='default')
@@ -70,7 +71,7 @@ if opt.manualSeed is None:
     opt.manualSeed = random.randint(1, 10000)
 random.seed(opt.manualSeed)
 np.random.seed(opt.manualSeed)
-# tf.set_random_seed(opt.manualSeed)
+set_random_seed(opt.manualSeed)
 #######################################################################################################################
 # Data
 #######################################################################################################################
