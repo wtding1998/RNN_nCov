@@ -7,7 +7,7 @@ import numpy as np
 import pandas
 import torch
 
-from get_dataset import get_relations, get_time_data, get_true
+from get_dataset import get_relations, get_time_data, get_true, get_keras_dataset
 from rnn_model import *
 from stnn import (SaptioTemporalNN_concat, SaptioTemporalNN_input,
                   SaptioTemporalNN_input_simple, SaptioTemporalNN_v0,
@@ -17,7 +17,7 @@ from utils import (DotDict, Logger, boolean_string, get_dir, get_model,
                    rmse_np_like_torch, rmse_tensor)
 from generate_scr import output_one
 
-# from keras.models import load_model
+from keras.models import load_model
 
 
 def get_config(model_dir):
@@ -115,10 +115,9 @@ class Exp():
         return self.logs()['train_loss.epoch']
 
     def model(self):
-        # if (self.model_name == 'LSTM') or (self.model_name == 'GRU'):
-        #     model = load_model(os.path.join(self.path, self.exp_name, 'model.h5'))
-        # todo: add RNN model
         print('Load', self.model_name, 'model.')
+        if self.model_name == 'keras':
+            model = load_model(os.path.join(self.path, self.exp_name, 'keras_model.h5'))
         if self.model_name == 'classical':
             model = SaptioTemporalNN_classical(self.relations(), self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],
                         self.config['dropout_f'], self.config['dropout_d'], self.config['activation'], self.config['periode'])
@@ -404,11 +403,29 @@ class Exp():
         # elif self.config['normalize'] == 'variance' and self.config.get('data_normalize', 'd') == 'x':
         return get_true(data, normalize_config, use_torch=False)
 
+    def RNN_data(self):
+        setup, (train_input, train_output), (val_input, val_output), (test_input, test_data)= get_keras_dataset(self.config['datadir'], self.config['dataset'], self.config['nt_train'], self.config['seq_length'], start_time=self.config['start_time'], normalize=self.config['normalize'], reduce=self.config['reduce'])
+        return test_input
+        
     def generate(self, nsteps, reduce=False, axis=0):
         model = self.model()
-        x, z = model.generate(nsteps)
-        x = x[:, :, axis].detach().numpy()
-        z = z.detach().numpy()
+        if self.model_name == 'keras':
+            pred = []
+            # load input data
+            test_input = self.RNN_data()
+            last_sequence = test_input[np.newaxis, ...]
+            for i in range(nsteps):
+                new_pred = model.predict(last_sequence)
+                pred.append(new_pred)
+                new_pred = new_pred[np.newaxis, ...]
+                last_sequence = np.concatenate([last_sequence[:, 1:, :], new_pred], axis=1)
+            x = np.concatenate(pred, axis=0)
+            x = np.reshape(x, (nsteps, self.config['nx'], self.config['nd']))
+            z = 0
+        else:
+            x, z = model.generate(nsteps)
+            x = x[:, :, axis].detach().numpy()
+            z = z.detach().numpy()
         return self.rescaled(x), z
 
     def plot_distribution(self, start_time=0):
@@ -649,7 +666,7 @@ def plot_pred_by_dir(exp_dir, folder, line_time=0, title='Pred', dim=0, train=Fa
 
 def output_scr_by_dir(di, dir_path, minepoch='sum', write='w', model='stnn', configs=['test', 'activation', 'batch_size', 'dataset', 'increase', 'lambd', 'lr', 'manualSeed', 'mode', 'nhid', 'nlayers', 'nt_train', 'data_normalize', 'nz', 'sch_bound', 'start_time', 'validation_length', 'test', 'time_datas']):
     if model == 'rnn':
-         configs=['rnn_model', 'activation', 'batch_size', 'dataset', 'increase', 'lr', 'manualSeed', 'nhid', 'nlayers', 'nt_train', 'start_time', 'seq_length']
+         configs=['reduce', 'rnn_model', 'activation', 'batch_size', 'dataset', 'increase', 'lr', 'manualSeed', 'nhid', 'nlayers', 'nt_train', 'start_time', 'seq_length']
     with open(r'small_dir.txt', write) as f:
         for model_name, exp_name in di.items():
             config_di = {}
@@ -702,7 +719,8 @@ if __name__ == "__main__":
 
 
     # --- test test loss ---
-    path = 'D:/Jupyter_Documents/ML-code/research_code/output/mar_None'
-    exp_name = 'v3-stnn_06-18-20-24-57_2411'
+    path = 'D:/Jupyter_Documents/ML-code/research_code/output/test'
+    exp_name = 'keras-rnn_07-10-06-50-02_4305'
     exp = Exp(exp_name, path)
-    exp.test_loss(7)
+    print(exp.generate(3))
+    # exp.test_loss(7)
