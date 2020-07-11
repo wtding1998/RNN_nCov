@@ -238,6 +238,40 @@ class Exp():
                     pred.append(new_pred)
             pred = np.stack(pred, axis=2)  # (nt_pred, nx, nd)
         return pred
+
+    def get_generate(self, increase=False):
+        '''
+        return generate with (nt, nx)
+        if pred_reduce == True, return (nt)
+        '''
+        pa = os.path.join(self.path, self.exp_name)
+        files = os.listdir(pa)
+        # ! consider 3-dims output
+        pred = []
+        if increase:
+            prefix = 'increase'
+        else:
+            prefix = 'generate'
+        for file_name in files:
+            if prefix in file_name:
+                new_pred = np.genfromtxt(os.path.join(self.path, self.exp_name, file_name), delimiter=',')
+                if len(new_pred.shape) == 1:
+                    new_pred = new_pred[...,np.newaxis]
+                pred.append(new_pred)
+        pred = np.stack(pred, axis=2)  # (nt_pred, nx, nd)
+        if np.isnan(pred).any():
+            pred = []
+            for file_name in files:
+                if prefix in file_name:
+                    new_pred = np.genfromtxt(os.path.join(self.path, self.exp_name, file_name), delimiter=' ')
+                    if len(new_pred.shape) == 1:
+                        new_pred = new_pred[...,np.newaxis]
+                    pred.append(new_pred)
+            pred = np.stack(pred, axis=2)  # (nt_pred, nx, nd)
+        pred = np.squeeze(pred)
+        if len(pred.shape) == 1:
+            pred = pred[..., np.newaxis]
+        return pred
     
     def calculate_rmse_loss(self, data_kind='confirmed'):
         '''
@@ -467,6 +501,44 @@ class Exp():
         dataset_start_time = {'jar': 0, 'feb': 8, 'mar': 37, 'jar_rnn': 0, 'feb_rnn': 0, 'mar_rnn': 0}
         return dataset_start_time[dataset]
 
+    def get_val_test_data(self, nt_test):
+        # --- load model and pred ---
+        #! set validaiton_legnth= 3 here
+        # validation_length = self.config['validation_length']
+        validation_length = 3
+        # val_test, _ = self.generate(validation_length + nt_test)
+        # val_test = np.squeeze(val_test)
+        # --- save test pred ---
+        # np.savetxt(os.path.join(self.path, self.exp_name, 'generate.txt'), val_test, delimiter=',')
+        # val_pred = val_test[:validation_length]
+        # test_pred = val_test[validation_length:]
+        # --- get ground_truth_data ---
+        start_stamp = self.get_time_staps(self.config['dataset'])
+        total_data, _ = get_time_data('data', 'total_data', start_time=start_stamp+self.config['start_time'], delete_time=self.config.get('end_time', 0), time_datas=self.config.get('time_datas', ['confirmed']), use_torch=False)
+        total_data = np.squeeze(total_data)
+        nt_train = self.config['nt_train']
+        val_test = total_data[nt_train:nt_train + validation_length + nt_test]
+        return val_test
+
+    def get_total_data(self, nt_test):
+        # --- load model and pred ---
+        #! set validaiton_legnth= 3 here
+        # validation_length = self.config['validation_length']
+        validation_length = 3
+        # val_test, _ = self.generate(validation_length + nt_test)
+        # val_test = np.squeeze(val_test)
+        # --- save test pred ---
+        # np.savetxt(os.path.join(self.path, self.exp_name, 'generate.txt'), val_test, delimiter=',')
+        # val_pred = val_test[:validation_length]
+        # test_pred = val_test[validation_length:]
+        # --- get ground_truth_data ---
+        start_stamp = self.get_time_staps(self.config['dataset'])
+        total_data, _ = get_time_data('data', 'total_data', start_time=start_stamp+self.config['start_time'], delete_time=self.config.get('end_time', 0), time_datas=self.config.get('time_datas', ['confirmed']), use_torch=False)
+        total_data = np.squeeze(total_data)
+        nt_train = self.config['nt_train']
+        val_test = total_data[:nt_train + validation_length + nt_test]
+        return val_test
+        
     def test_loss(self, nt_test):
         # --- load model and pred ---
         #! set validaiton_legnth= 3 here
@@ -683,6 +755,54 @@ def plot_pred_by_dir(exp_dir, folder, line_time=0, title='Pred', dim=0, train=Fa
     plt.grid()
     for model_name, pred_sum in plotted_dir.items():
         print(np.linalg.norm(pred_sum - data_sum) / nt_pred)
+        plt.plot(x_axis, pred_sum, label=model_name, marker='*', linestyle='--')
+    plt.plot(x_axis, data_sum, label='ground_truth', marker='o')
+    plt.axvline(x=line_time,ls="--")
+    plt.legend()
+    plt.title(title)
+    plt.show()
+    return plotted_dir, data_sum
+
+def plot_generate(exp_dir, folder, line_time=0, title='Pred', dim=0, train=False, increase=False, nt_test=4):
+    '''
+    generate : (nx, nd)
+    test : (nx, nd)
+    '''
+    pred_dir = {}
+    loss_dir = {}
+    for model_name, exp_name in exp_dir.items():
+        exp = Exp(exp_name, folder)
+        generate_data = exp.get_generate(increase)
+        nt_pred = generate_data.shape[0]
+        # if train:
+        #     train_pred = exp.train_pred()
+        #     train_pred = np.reshape(train_pred, (-1, generate_data.shape[1], generate_data.shape[2]))
+        #     generate_data = np.concatenate([train_pred, generate_data], axis=0)
+        pred_dir[model_name] = generate_data
+    data = exp.get_total_data(nt_test)
+    data = exp.get_total_data(nt_test)
+    data_sum = data.sum(1)
+    plotted_dir = {}
+    if line_time < 0:
+        line_time = data_sum.shape[0] - nt_pred
+    for model_name, pred in pred_dir.items():
+        pred_sum = pred.sum(1) # (nt_pred)
+        if not train:
+            pred_sum = np.concatenate([data_sum[-nt_pred - line_time: - nt_pred], pred_sum])
+        plotted_dir[model_name] = pred_sum
+    if not train:
+        data_sum = data_sum[-nt_pred - line_time:]
+        x_axis = np.arange(nt_pred + line_time)
+    else:
+        nt = data_sum.shape[0]
+        x_axis = np.arange(nt)
+        line_time = nt - nt_pred -1
+    # plt.rcParams['font.sans-serif'] = ['KaiTi'] # 指定默认字体
+    # plt.rcParams['axes.unicode_minus'] = False
+    fig = plt.figure()
+    plt.grid()
+    for model_name, pred_sum in plotted_dir.items():
+        # print(np.linalg.norm(pred_sum - data_sum) / nt_pred)
         plt.plot(x_axis, pred_sum, label=model_name, marker='*', linestyle='--')
     plt.plot(x_axis, data_sum, label='ground_truth', marker='o')
     plt.axvline(x=line_time,ls="--")
