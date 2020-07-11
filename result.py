@@ -165,8 +165,8 @@ class Exp():
             if self.config['normalize'] == 'max_min' and self.config['data_normalize'] != 'x':
                 data = (data - self.config['mean']) / (self.config['max']-self.config['min'])
             elif self.config['normalize'] == 'variance' and self.config['data_normalize'] != 'x':
-                self.config['mean'] = train_data.mean().item()
-                self.config['std'] = torch.std(train_data).item()
+                # self.config['mean'] = train_data.mean().item()
+                # self.config['std'] = torch.std(train_data).item()
                 data = (data - self.config['mean']) / self.config['std']
             elif self.config['normalize'] == 'variance' and self.config['data_normalize'] == 'x':
                 for i in range(self.config['nx']):
@@ -407,7 +407,7 @@ class Exp():
         setup, (train_input, train_output), (val_input, val_output), (test_input, test_data)= get_keras_dataset(self.config['datadir'], self.config['dataset'], self.config['nt_train'], self.config['seq_length'], start_time=self.config['start_time'], normalize=self.config['normalize'], reduce=self.config['reduce'])
         return test_input
         
-    def generate(self, nsteps, reduce=False, axis=0):
+    def generate(self, nsteps, reduce=False, axis=0, save=False, save_name='genenate.txt'):
         model = self.model()
         if self.model_name == 'keras':
             pred = []
@@ -421,12 +421,18 @@ class Exp():
                 last_sequence = np.concatenate([last_sequence[:, 1:, :], new_pred], axis=1)
             x = np.concatenate(pred, axis=0)
             x = np.reshape(x, (nsteps, self.config['nx'], self.config['nd']))
+            x = self.rescaled(x)
             z = 0
         else:
             x, z = model.generate(nsteps)
             x = x[:, :, axis].detach().numpy()
+            x = self.rescaled(x)
             z = z.detach().numpy()
-        return self.rescaled(x), z
+        if save:
+            #! only consider the case where nd=1
+            x = np.reshape(x, (nsteps, self.config['nx']))
+            np.savetxt(os.path.join(self.path, self.exp_name, save_name), x, delimiter=',')
+        return x, z
 
     def plot_distribution(self, start_time=0):
         # --- get data ---
@@ -458,14 +464,18 @@ class Exp():
         plt.colorbar()
 
     def get_time_staps(self, dataset):
-        dataset_start_time = {'jar': 0, 'feb': 8, 'mar': 37}
+        dataset_start_time = {'jar': 0, 'feb': 8, 'mar': 37, 'jar_rnn': 0, 'feb_rnn': 0, 'mar_rnn': 0}
         return dataset_start_time[dataset]
 
     def test_loss(self, nt_test):
         # --- load model and pred ---
-        validation_length = self.config['validation_length']
+        #! set validaiton_legnth= 3 here
+        # validation_length = self.config['validation_length']
+        validation_length = 3
         val_test, _ = self.generate(validation_length + nt_test)
         val_test = np.squeeze(val_test)
+        # --- save test pred ---
+        np.savetxt(os.path.join(self.path, self.exp_name, 'generate.txt'), val_test, delimiter=',')
         val_pred = val_test[:validation_length]
         test_pred = val_test[validation_length:]
         # --- get ground_truth_data ---
@@ -474,13 +484,23 @@ class Exp():
         total_data = np.squeeze(total_data)
         nt_train = self.config['nt_train']
         val_true = total_data[nt_train:nt_train + validation_length]
-        # test_true = total_data[nt_train + validation_length:nt_train + validation_length + nt_test]    
-        val_loss = rmse_np_like_torch(val_pred, val_true)
-        print('val_loss:', val_loss)
-        assert np.abs(val_loss - self.config['final_rmse_score']) < 0.5
-        # --- save test pred ---
-        # test_loss = rmse_np_like_torch(test_pred, test_true)
-        return test_loss
+        test_true = total_data[nt_train + validation_length:nt_train + validation_length + nt_test]
+        if len(val_pred.shape) != 1:
+            self.config['rmse_val_loss'] = rmse_np_like_torch(val_pred, val_true)
+            self.config['rmse_test_loss'] = rmse_np_like_torch(test_pred, test_true)
+            self.config['sum_val_loss'] = np.linalg.norm(val_pred.sum(1) - val_true.sum(1)) / validation_length
+            self.config['sum_test_loss'] = np.linalg.norm(test_pred.sum(1) - test_true.sum(1)) / nt_test
+        else:
+            self.config['rmse_val_loss'] = 1e8
+            self.config['rmse_test_loss'] = 1e8
+            self.config['sum_val_loss'] = np.linalg.norm(val_pred - val_true.sum(1)) / validation_length
+            self.config['sum_test_loss'] = np.linalg.norm(test_pred - test_true.sum(1)) / nt_test
+
+        with open(os.path.join(self.path, self.exp_name, 'config.json'), 'w') as f:
+            json.dump(self.config, f, sort_keys=True, indent=4)
+        return self.config['rmse_val_loss'], self.config['rmse_test_loss'], self.config['sum_val_loss'], self.config['sum_test_loss']
+
+
 
 class Printer():
     def __init__(self, folder):
@@ -488,7 +508,7 @@ class Printer():
         self.dataset = self.folder.split('_')[0]
         self.model = self.folder.split('_')[1]
 
-    def exp_models(self):
+    def exps_name(self):
         return next_dir(self.folder)
 
     def get_model(self, string):
@@ -498,6 +518,13 @@ class Printer():
             if string in i:
                 li.append(i)
         return li
+
+    def process_config(self):
+        for exp_name in self.exps_name():
+            print(exp_name)
+            exp = Exp(exp_name, self.folder)
+            print(exp.test_loss(4))
+        return 0
 
     def get_df(self, col=['train_loss', 'test_loss', 'true_loss', 'nhid', 'nlayers'], required_list = 'all', mean=False, min=False, increase=False, nt_train=0):
         if isinstance(required_list, str):
@@ -719,8 +746,8 @@ if __name__ == "__main__":
 
 
     # --- test test loss ---
-    path = 'D:/Jupyter_Documents/ML-code/research_code/output/test'
-    exp_name = 'keras-rnn_07-10-06-50-02_4305'
+    path = 'D:/Jupyter_Documents/ML-code/research_code/output/mar_None'
+    exp_name = 'classical-stnn_06-18-20-11-46_1557'
     exp = Exp(exp_name, path)
-    print(exp.generate(3))
+    print(exp.test_loss(4))
     # exp.test_loss(7)
