@@ -19,7 +19,6 @@ from generate_scr import output_one
 
 from keras.models import load_model
 
-
 def get_config(model_dir):
     # get config
     with open(os.path.join(model_dir, 'config.json')) as f:

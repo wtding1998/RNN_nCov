@@ -184,8 +184,6 @@ class SaptioTemporalNN(nn.Module):
         elif self.mode == 'discover':
             self.rel_weights.data = relations.data
 
-
-
     def _init_factors(self, periode):
         initrange = 1.0
         if periode >= self.nt:
@@ -1918,8 +1916,6 @@ class SaptioTemporalNN_v0(nn.Module):
         elif self.mode == 'discover':
             self.rel_weights.data = relations.data
 
-
-
     def _init_factors(self, periode):
         initrange = 1.0
         if periode >= self.nt:
@@ -1995,6 +1991,7 @@ class SaptioTemporalNN_v0(nn.Module):
         assert self.mode is not None
         yield self.rel_weights
 
+
 class SaptioTemporalNN_classical(nn.Module):
     def __init__(self,
                  relations,
@@ -2008,7 +2005,8 @@ class SaptioTemporalNN_classical(nn.Module):
                  dropout_f=0.,
                  dropout_d=0.,
                  activation='tanh',
-                 periode=1):
+                 periode=1,
+                 auto_encoder=False):
         super(SaptioTemporalNN_classical, self).__init__()
         assert (nhid > 0 and nlayers > 1) or (nhid == 0 and nlayers == 1)
         # attributes
@@ -2016,6 +2014,7 @@ class SaptioTemporalNN_classical(nn.Module):
         self.nx = nx
         self.nz = nz
         self.mode = mode
+        self.auto_encoder = auto_encoder
         # kernel
         # self.activation = torch.tanh if activation == 'tanh' else identity if activation == 'identity' else None
         device = relations.device
@@ -2026,7 +2025,7 @@ class SaptioTemporalNN_classical(nn.Module):
             self.relations = torch.cat(
                 (torch.eye(nx).to(device).unsqueeze(1), torch.ones(
                     nx, relations.size(1), nx).to(device)), 1)
-        self.nr = self.relations.size(1) # number of relations, here nr = 2
+        self.nr = self.relations.size(1)  # number of relations, here nr = 2
         # modules
         self.drop = nn.Dropout(dropout_f)
         self.factors = nn.Parameter(torch.randn(nt, nx, nz))
@@ -2034,14 +2033,20 @@ class SaptioTemporalNN_classical(nn.Module):
             self.dynamic = MLP_tanh(nz, nhid, nz, nlayers, dropout_d)
             self.decoder = MLP_tanh(nz, nhid, nd, nlayers, dropout_d)
             self.activation = torch.tanh
+            if self.auto_encoder:
+                self.encoder = MLP_tanh(nd, nhid, nz, nlayers, dropout_d)
         elif activation == 'sigmoid':
             self.dynamic = MLP_sigmoid(nz, nhid, nz, nlayers, dropout_d)
             self.decoder = MLP_sigmoid(nz, nhid, nd, nlayers, dropout_d)
             self.activation = identity
+            if self.auto_encoder:
+                self.encoder = MLP_sigmoid(nd, nhid, nz, nlayers, dropout_d)
         else:
             self.dynamic = MLP(nz, nhid, nz, nlayers, dropout_d)
             self.decoder = MLP(nz, nhid, nd, nlayers, dropout_d)
             self.activation = torch.relu
+            if self.auto_encoder:
+                self.encoder = MLP(nd, nhid, nz, nlayers, dropout_d)
         if mode == 'refine':
             self.relations.data = self.relations.data.ceil().clamp(0, 1).bool()
             self.rel_weights = nn.Parameter(
@@ -2055,24 +2060,28 @@ class SaptioTemporalNN_classical(nn.Module):
         elif self.mode == 'discover':
             self.rel_weights.data = relations.data
 
-
-
     def _init_factors(self, periode):
-        initrange = 1.0
-        if periode >= self.nt:
-            self.factors.data.uniform_(-initrange, initrange)
+        # if use auto-encoder to gain factors and decoder:
+        if self.auto_encoder:
+            # train encoder and decoder
+            self.train_auto_encoder()
+
         else:
-            timesteps = torch.arange(self.factors.size(0)).long()
-            for t in range(periode):
-                idx = timesteps % periode == t
-                idx_data = idx.view(-1, 1, 1).expand_as(self.factors)
-                init = torch.Tensor(self.nx, self.nz).uniform_(
-                    -initrange, initrange).repeat(idx.sum().item(), 1, 1)
-            self.factors.data.masked_scatter_(idx_data, init.view(-1))
-        # if self.mode == 'refine':
-        #     self.rel_weights.data.fill_(0.5)
-        # elif self.mode == 'discover':
-        #     self.rel_weights.data.fill_(1 / self.nx)
+            initrange = 1.0
+            if periode >= self.nt:
+                self.factors.data.uniform_(-initrange, initrange)
+            else:
+                timesteps = torch.arange(self.factors.size(0)).long()
+                for t in range(periode):
+                    idx = timesteps % periode == t
+                    idx_data = idx.view(-1, 1, 1).expand_as(self.factors)
+                    init = torch.Tensor(self.nx, self.nz).uniform_(
+                        -initrange, initrange).repeat(idx.sum().item(), 1, 1)
+                self.factors.data.masked_scatter_(idx_data, init.view(-1))
+            # if self.mode == 'refine':
+            #     self.rel_weights.data.fill_(0.5)
+            # elif self.mode == 'discover':
+            #     self.rel_weights.data.fill_(1 / self.nx)
 
     def get_relations(self):
         if self.mode is None or self.mode == 'default':

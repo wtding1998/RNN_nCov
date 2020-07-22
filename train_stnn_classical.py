@@ -24,7 +24,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
 
-
 from get_dataset import get_stnn_data, get_true
 from utils import DotDict, Logger, rmse, boolean_string, get_dir, get_time, time_dir, rmse_np, rmse_np_like_torch, rmse_sum_confirmed
 from stnn import SaptioTemporalNN_classical
@@ -176,9 +175,6 @@ def train(command=False):
     if opt.device > -1:
         torch.cuda.manual_seed_all(opt.manualSeed)
 
-
-
-
     #######################################################################################################################
     # Data
     #######################################################################################################################
@@ -203,7 +199,7 @@ def train(command=False):
     nex_dyn = idx_dyn.size(1)
     # decoder
     idx_dec = torch.stack((t_idx, x_idx)).view(2, -1).to(device)
-    nex_dec = idx_dec.size(1)
+    nex_dec = idx_dec.size(0)
 
     #######################################################################################################################
     # Model
