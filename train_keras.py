@@ -6,11 +6,11 @@ from collections import OrderedDict, defaultdict
 
 import configargparse
 import numpy as np
-from keras.layers.core import Activation, Dense, Dropout
-from keras.layers.recurrent import GRU, LSTM
-from keras.models import Sequential, load_model
-from keras.optimizers import SGD, RMSprop, adam
-from keras.callbacks import EarlyStopping
+from tensorflow.keras.layers import Activation, Dense, Dropout
+from tensorflow.keras.layers import GRU, LSTM
+from tensorflow.keras.models import Sequential, load_model
+from tensorflow.keras.optimizers import SGD, Adam
+from tensorflow.keras.callbacks import EarlyStopping
 from tqdm import trange
 # from tensorflow import set_random_seed
 # import tensorflow as tf

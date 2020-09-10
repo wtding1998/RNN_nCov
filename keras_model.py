@@ -1,7 +1,7 @@
-from keras.layers.core import Dense, Activation, Dropout, Flatten
-from keras.layers.recurrent import LSTM, GRU
-from keras.models import Sequential, load_model
-from keras.optimizers import SGD, RMSprop, Adam
+from tensorflow.keras.layers import Dense, Activation, Dropout, Flatten
+from tensorflow.keras.layers import LSTM, GRU
+from tensorflow.keras.models import Sequential, load_model
+from tensorflow.keras.optimizers import SGD, Adam
 import numpy as np
 
 class LSTM_module_cl():
@@ -155,7 +155,7 @@ def GRU_module(ninput, nhid, nlayers, nout, activation='relu', lr=1e-3, dropout=
             return_sequences=False))
     model.add(Dense(nout))
     model.add(Activation(activation))
-    model.compile(loss="mse", optimizer=RMSprop(lr=lr))
+    model.compile(loss="mse", optimizer=Adam(lr=lr))
     return model
 
 class LSTM_Linear_cl():
@@ -201,7 +201,7 @@ class LSTM_Linear_cl():
                 return_sequences=False))
         network.add(Dense(nout))
         network.add(Activation(activation))
-        network.compile(loss="mse", optimizer=RMSprop(lr=lr))
+        network.compile(loss="mse", optimizer=Adam(lr=lr))
         return network
 
     def generate(self, nsteps):
@@ -245,7 +245,7 @@ def LSTM_Linear(ninput, nhid, nlayers, nout, activation='relu', lr=1e-3, dropout
             return_sequences=False))
     model.add(Dense(nout))
     model.add(Activation(activation))
-    model.compile(loss="mse", optimizer=RMSprop(lr=lr))
+    model.compile(loss="mse", optimizer=Adam(lr=lr))
     return model
 
 class GRU_Linear_cl():
@@ -291,7 +291,7 @@ class GRU_Linear_cl():
                 return_sequences=False))
         network.add(Dense(nout))
         network.add(Activation(activation))
-        network.compile(loss="mse", optimizer=RMSprop(lr=lr))
+        network.compile(loss="mse", optimizer=Adam(lr=lr))
         return network
 
     def generate(self, nsteps):
@@ -334,7 +334,7 @@ def GRU_Linear(ninput, nhid, nlayers, nout, activation='relu', lr=1e-3, dropout=
             nhid,
             return_sequences=False))
     model.add(Dense(nout))
-    model.compile(loss="mse", optimizer=RMSprop(lr=lr))
+    model.compile(loss="mse", optimizer=Adam(lr=lr))
     return model
 
 if __name__ == "__main__":
