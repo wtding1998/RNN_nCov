@@ -1933,9 +1933,9 @@ class SaptioTemporalNN_v0(nn.Module):
         # elif self.mode == 'discover':
         #     self.rel_weights.data.fill_(1 / self.nx)
 
-    def get_relations(self):
+k   def get_relations(self):
         if self.mode is None or self.mode == 'default':
-            return self.relations
+k           return self.relations
         else:
             weights = F.hardtanh(self.rel_weights, 0, 1)
             if self.mode == 'refine':
