@@ -1,4 +1,5 @@
 import json
+
 import os
 from collections import defaultdict
 
@@ -11,7 +12,7 @@ from get_dataset import get_relations, get_time_data, get_true, get_keras_datase
 from rnn_model import *
 from stnn import (SaptioTemporalNN_concat, SaptioTemporalNN_input,
                   SaptioTemporalNN_input_simple, SaptioTemporalNN_v0,
-                  SaptioTemporalNN_classical)
+                  SaptioTemporalNN_classical, SaptioTemporalNN_input_2)
 from utils import (DotDict, Logger, boolean_string, get_dir, get_model,
                    get_time, model_dir, next_dir, normalize, rmse, rmse_np,
                    rmse_np_like_torch, rmse_tensor)
@@ -96,8 +97,13 @@ class Exp():
 
         if ('normalize_method' not in self.config.keys()) and ('relation_normalize' in self.config.keys()):
             self.config['normalize_method'] = self.config['relation_normalize']
+
+        if ('data_normalize' not in self.config.keys()):
+            self.config['data_normalize'] = 'd'
+
+        
         with open(os.path.join(self.path, self.exp_name, 'config.json'), 'w') as f:
-            json.dump(self.config, f, sort_keys=True, indent=4)
+            json.dump(self.config, f, sort_keys=True, indent=4)    
 
     def dataset_name(self):
         folder_name = os.path.basename(os.path.normpath(self.path))
@@ -141,6 +147,12 @@ class Exp():
             model = SaptioTemporalNN_input_simple(self.relations(), self.data_torch(normalized=True)[:self.config['nt_train']], self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],
                         self.config['dropout_f'], self.config['dropout_d'], self.config['activation'], self.config['periode'])
             model.load_state_dict(torch.load(os.path.join(self.path, self.exp_name, 'model.pt')))
+
+        if self.model_name == 'v4':
+            model = SaptioTemporalNN_input_2(self.relations(), self.data_torch(normalized=True)[:self.config['nt_train']], self.config['nx'], self.config['nt_train'], self.config['nd'], self.config['nz'], self.config['mode'], self.config['nhid'], self.config['nlayers'],
+                        self.config['dropout_f'], self.config['dropout_d'], self.config['activation'], self.config['periode'])
+            model.load_state_dict(torch.load(os.path.join(self.path, self.exp_name, 'model.pt')))
+
         return model
 
     def data_torch(self, increase=False, normalized=False):
@@ -500,30 +512,29 @@ class Exp():
         dataset_start_time = {'jar': 0, 'feb': 8, 'mar': 37, 'jar_rnn': 0, 'feb_rnn': 0, 'mar_rnn': 0}
         return dataset_start_time[dataset]
 
-    def get_val_test_data(self, nt_test):
-        # --- load model and pred ---
-        #! set validaiton_legnth= 3 here
-        # validation_length = self.config['validation_length']
-        validation_length = 3
-        # val_test, _ = self.generate(validation_length + nt_test)
-        # val_test = np.squeeze(val_test)
-        # --- save test pred ---
-        # np.savetxt(os.path.join(self.path, self.exp_name, 'generate.txt'), val_test, delimiter=',')
-        # val_pred = val_test[:validation_length]
-        # test_pred = val_test[validation_length:]
-        # --- get ground_truth_data ---
-        start_stamp = self.get_time_staps(self.config['dataset'])
-        total_data, _ = get_time_data('data', 'total_data', start_time=start_stamp+self.config['start_time'], delete_time=self.config.get('end_time', 0), time_datas=self.config.get('time_datas', ['confirmed']), use_torch=False)
-        total_data = np.squeeze(total_data)
-        nt_train = self.config['nt_train']
-        val_test = total_data[nt_train:nt_train + validation_length + nt_test]
-        return val_test
+    # def get_val_test_data(self, nt_test):
+    #     # --- load model and pred ---
+    #     #! set validaiton_legnth= 3 here
+    #     validation_length = self.config['validation_length']
+    #     # val_test, _ = self.generate(validation_length + nt_test)
+    #     # val_test = np.squeeze(val_test)
+    #     # --- save test pred ---
+    #     # np.savetxt(os.path.join(self.path, self.exp_name, 'generate.txt'), val_test, delimiter=',')
+    #     # val_pred = val_test[:validation_length]
+    #     # test_pred = val_test[validation_length:]
+    #     # --- get ground_truth_data ---
+    #     start_stamp = self.get_time_staps(self.config['dataset'])
+    #     total_data, _ = get_time_data('data', 'total_data', start_time=start_stamp+self.config['start_time'], delete_time=self.config.get('end_time', 0), time_datas=self.config.get('time_datas', ['confirmed']), use_torch=False)
+    #     total_data = np.squeeze(total_data)
+    #     nt_train = self.config['nt_train']
+    #     val_test = total_data[nt_train:nt_train + validation_length + nt_test]
+    #     return val_test
 
     def get_total_data(self, nt_test):
         # --- load model and pred ---
         #! set validaiton_legnth= 3 here
-        # validation_length = self.config['validation_length']
-        validation_length = 3
+        validation_length = self.config['validation_length']
+        # validation_length = 3
         # val_test, _ = self.generate(validation_length + nt_test)
         # val_test = np.squeeze(val_test)
         # --- save test pred ---
@@ -537,12 +548,25 @@ class Exp():
         nt_train = self.config['nt_train']
         val_test = total_data[:nt_train + validation_length + nt_test]
         return val_test
-        
-    def test_loss(self, nt_test):
+
+    def test_val_data(self, nt_test, validation_length):
+        validation_length = self.config.get('validation_length', validation_length)
+        # --- get ground_truth_data ---
+        start_stamp = self.get_time_staps(self.config['dataset'])
+        total_data, _ = get_time_data('data', 'total_data', start_time=start_stamp+self.config['start_time'], delete_time=self.config.get('end_time', 0), time_datas=self.config.get('time_datas', ['confirmed']), use_torch=False)
+        total_data = np.squeeze(total_data)
+        nt_train = self.config['nt_train']
+        val_true = total_data[nt_train:nt_train + validation_length]
+        test_true = total_data[nt_train + validation_length:nt_train + validation_length + nt_test]
+        return val_true, test_true
+
+
+    def test_loss(self, nt_test, validation_length=3):
         # --- load model and pred ---
         #! set validaiton_legnth= 3 here
         # validation_length = self.config['validation_length']
-        validation_length = 3
+        validation_length = self.config.get('validation_length', validation_length)
+        # validation_length = 3
         val_test, _ = self.generate(validation_length + nt_test)
         val_test = np.squeeze(val_test)
         # --- save test pred ---
@@ -590,11 +614,11 @@ class Printer():
                 li.append(i)
         return li
 
-    def process_config(self):
+    def process_config(self, nt_test, validation_length):
         for exp_name in self.exps_name():
             print(exp_name)
             exp = Exp(exp_name, self.folder)
-            print(exp.test_loss(4))
+            print(exp.test_loss(nt_test, validation_length))
         return 0
 
     def get_df(self, col=['train_loss', 'test_loss', 'true_loss', 'nhid', 'nlayers'], required_list = 'all', mean=False, min=False, increase=False, nt_train=0):
@@ -779,7 +803,6 @@ def plot_generate(exp_dir, folder, line_time=0, title='Pred', dim=0, train=False
         #     generate_data = np.concatenate([train_pred, generate_data], axis=0)
         pred_dir[model_name] = generate_data
     data = exp.get_total_data(nt_test)
-    data = exp.get_total_data(nt_test)
     data_sum = data.sum(1)
     plotted_dir = {}
     if line_time < 0:
@@ -804,13 +827,16 @@ def plot_generate(exp_dir, folder, line_time=0, title='Pred', dim=0, train=False
         # print(np.linalg.norm(pred_sum - data_sum) / nt_pred)
         plt.plot(x_axis, pred_sum, label=model_name, marker='*', linestyle='--')
     plt.plot(x_axis, data_sum, label='ground_truth', marker='o')
-    plt.axvline(x=line_time,ls="--")
+    plt.axvline(x=line_time-1,ls="--")
     plt.legend()
     plt.title(title)
     plt.show()
     return plotted_dir, data_sum
 
 def output_scr_by_dir(di, dir_path, minepoch='sum', write='w', model='stnn', configs=['test', 'activation', 'batch_size', 'dataset', 'increase', 'lambd', 'lr', 'manualSeed', 'mode', 'nhid', 'nlayers', 'nt_train', 'data_normalize', 'nz', 'sch_bound', 'start_time', 'validation_length', 'test', 'time_datas']):
+    '''
+    Get the configuration of an exp and output it with the format of train_model
+    '''
     if model == 'rnn':
          configs=['reduce', 'rnn_model', 'activation', 'batch_size', 'dataset', 'increase', 'lr', 'manualSeed', 'nhid', 'nlayers', 'nt_train', 'start_time', 'seq_length']
     with open(r'small_dir.txt', write) as f:
@@ -833,40 +859,17 @@ def process_config(folder):
     for exp_name in exp_names:
         exp = Exp(exp_name, folder)
         print(exp_name)
+
+def fliter_row(df, contain_name):
+    row_names = list(df.index)
+    filtered_names = []
+    for row_name in row_names:
+        if contain_name in row_name:
+            filtered_names.append(row_name)
+
+    return df.loc[filtered_names]
     
 if __name__ == "__main__":
     # === Test ===
-
-
-    # --- test calculate_rmse_loss ---
-    # path = 'D:/Jupyter_Documents/ML-code/research_code/output/jar0426'
-    # exp_name = 'v3-stnn_04-27-08-31-14'
-    # exp_name = 'v3-stnn_04-27-09-19-04'
-    # exp = Exp(exp_name, path)
-
-    # print(exp.config['score_true_confirmed'])
-    # print(exp.calculate_rmse_loss())
-
-    # --- test plot relation change ---
-    # path = 'D:/Jupyter_Documents/ML-code/research_code/output/test'
-    # exp_name = 'v2-stnn_04-27-11-32-30'
-    # exp = Exp(exp_name, path)
-    # exp.plot_relations()
-
-    # --- test increase data ---
-    # path = 'D:/Jupyter_Documents/ML-code/research_code/output/test_fli'
-    # exp_name = 'ori-stnn_00-06-05-04-56'
-    # exp_dir = {'test': exp_name}
-    # exp_name = 'v2-stnn_05-03-00-05-59_0251'
-    # exp = Exp(exp_name, path)
-    # print(exp.plot_train_times().shape)
-    # pred_dir,data = get_pred(exp_dir, path, train=False)
-    # plot_pred_by_dir(exp_dir, path, increase=False)
-
-
-    # --- test test loss ---
-    path = 'D:/Jupyter_Documents/ML-code/research_code/output/mar_None'
-    exp_name = 'classical-stnn_06-18-20-11-46_1557'
-    exp = Exp(exp_name, path)
-    print(exp.test_loss(4))
-    # exp.test_loss(7)
+    exp = Exp("v4-stnn_09-16-15-17-48_0415", "../output_result/best_mar_3")
+    exp.test_loss(nt_test=4, validation_length=3)

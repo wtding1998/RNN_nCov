@@ -367,6 +367,7 @@ def train(command=False):
         x_pred, _ = model.generate(opt.nt - opt.nt_train)
         score_ts = rmse(x_pred, test_data, reduce=False)
         opt.final_rmse_score = rmse(get_true(x_pred, opt), get_true(test_data, opt))
+        print(x_pred)
         opt.final_sum_score = rmse_sum_confirmed(get_true(x_pred, opt), get_true(test_data, opt)) / opt.validation_length
 
     # logger.log('test.rmse', score)

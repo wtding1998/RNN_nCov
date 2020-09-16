@@ -5,7 +5,6 @@ import torch
 
 from utils import DotDict, normalize
 
-
 def dataset_factory(data_dir, disease, nt_train, k=1):
     # get dataset
     opt, data, relations = get_data_set(data_dir, disease)
