@@ -797,10 +797,10 @@ def plot_generate(exp_dir, folder, line_time=0, title='Pred', dim=0, train=False
         exp = Exp(exp_name, folder)
         generate_data = exp.get_generate(increase)
         nt_pred = generate_data.shape[0]
-        # if train:
-        #     train_pred = exp.train_pred()
-        #     train_pred = np.reshape(train_pred, (-1, generate_data.shape[1], generate_data.shape[2]))
-        #     generate_data = np.concatenate([train_pred, generate_data], axis=0)
+        if train:
+            train_pred = exp.train_pred()
+            train_pred = np.reshape(train_pred, (-1, generate_data.shape[1], generate_data.shape[2]))
+            generate_data = np.concatenate([train_pred, generate_data], axis=0)
         pred_dir[model_name] = generate_data
     data = exp.get_total_data(nt_test)
     data_sum = data.sum(1)
