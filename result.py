@@ -15,7 +15,7 @@ from stnn import (SaptioTemporalNN_concat, SaptioTemporalNN_input,
                   SaptioTemporalNN_classical, SaptioTemporalNN_input_2)
 from utils import (DotDict, Logger, boolean_string, get_dir, get_model,
                    get_time, model_dir, next_dir, normalize, rmse, rmse_np,
-                   rmse_np_like_torch, rmse_tensor)
+                   rmse_np_like_torch, rmse_tensor, rmse_matrix)
 from generate_scr import output_one
 
 from keras.models import load_model
@@ -581,8 +581,8 @@ class Exp():
         val_true = total_data[nt_train:nt_train + validation_length]
         test_true = total_data[nt_train + validation_length:nt_train + validation_length + nt_test]
         if len(val_pred.shape) != 1:
-            self.config['rmse_val_loss'] = rmse_np_like_torch(val_pred, val_true)
-            self.config['rmse_test_loss'] = rmse_np_like_torch(test_pred, test_true)
+            self.config['rmse_val_loss'] = rmse_matrix(val_pred, val_true)
+            self.config['rmse_test_loss'] = rmse_matrix(test_pred, test_true)
             self.config['sum_val_loss'] = np.linalg.norm(val_pred.sum(1) - val_true.sum(1)) / validation_length
             self.config['sum_test_loss'] = np.linalg.norm(test_pred.sum(1) - test_true.sum(1)) / nt_test
         else:
@@ -826,11 +826,15 @@ def plot_generate(exp_dir, folder, line_time=0, title='Pred', dim=0, train=False
     for model_name, pred_sum in plotted_dir.items():
         # print(np.linalg.norm(pred_sum - data_sum) / nt_pred)
         plt.plot(x_axis, pred_sum, label=model_name, marker='*', linestyle='--')
-    plt.plot(x_axis, data_sum, label='ground_truth', marker='o')
+    plt.plot(x_axis, data_sum, label='真实值', marker='o')
     plt.axvline(x=line_time-1,ls="--")
     plt.legend()
     plt.title(title)
-    plt.show()
+    plt.xticks(np.arange(0, len(x_axis), 3))
+    plt.ylabel('现存确诊')
+    plt.xlabel('天数')
+    plt.savefig(title+'.pdf')
+    # plt.show()
     return plotted_dir, data_sum
 
 def output_scr_by_dir(di, dir_path, minepoch='sum', write='w', model='stnn', configs=['test', 'activation', 'batch_size', 'dataset', 'increase', 'lambd', 'lr', 'manualSeed', 'mode', 'nhid', 'nlayers', 'nt_train', 'data_normalize', 'nz', 'sch_bound', 'start_time', 'validation_length', 'test', 'time_datas']):

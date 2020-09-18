@@ -36,6 +36,14 @@ def rmse_np_like_torch(x_pred, x_target):
     mse = np.mean(x_diff)
     return mse.astype(np.float64)
 
+def rmse_matrix(x_pred, x_target):
+    '''
+    (nt, nx)
+    '''
+    x_diff = np.sqrt(np.power(x_pred - x_target, 2))
+    mse = np.mean(x_diff)
+    return mse.astype(np.float64)
+
 def rmse_tensor(x_pred, x_target):
     return x_pred.sub(x_target).pow(2).sum(-1).sqrt().mean()
 
