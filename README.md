@@ -4,16 +4,15 @@ This project is supported by the National Natural Science Foundation of China (G
 
 ## Data
 ### nCov2019
-The file `ncov.csv` contains the raw temperature data. The 171 rows correspond to the 171 timestep, and the 31 columns are the 31 space points.
-### Aids
-The file `aids.csv` contains the raw temperature data. The 156 rows correspond to the 156 timestep, and the 29 columns are the 29 space points.
-### Flu
-The file `flu.csv` contains the raw temperature data. The 156 rows correspond to the 156 timestep, and the 29 columns are the 29 space points.
-### Heat
-The file `heat.csv` contains the raw temperature data. The 200 rows correspond to the 200 timestep, and the 41 columns are the 41 space points.
+The folder `data/ncov/time_datas` contains the raw data, including confirmed, cured and dead data. The 233 rows correspond to the 233 timestep, and the 31 columns are the 31 space points.
 
+### RNN
+Here **LSTM** and **GRU** are used.
 
-### train_rnn.py
-```python
-python train_rnn.py --lr 1e-2 --dataset ncov --rnn_model LSTM --test True
-```
+Commands for reproducing synthetic experiments:
+#### LSTM
+`python train_rnn.py --dataset ncov --rnn_model LSTM --manualSeed 1208 --xp LSTM_aids`
+
+#### GRU
+`python train_rnn.py --dataset aids --rnn_model GRU --manualSeed 1208 --xp GRU_aids`
+
